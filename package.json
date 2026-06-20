@@ -1,0 +1,58 @@
+{
+  "name": "solana-tx-stack",
+  "version": "1.0.0",
+  "description": "Solana Transaction Stack with Jito Bundle Support - Windows Compatible",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/**/*.ts",
+    "test": "vitest",
+    "dashboard": "node scripts/dashboard-server.js",
+    "dashboard:open": "node scripts/dashboard-server.js",
+    "sync": "node scripts/sync-lifecycle.js",
+    "dashboard:full": "npm run dashboard & npm run sync"
+  },
+  "keywords": [
+    "solana",
+    "jito",
+    "mev",
+    "bundle",
+    "trading"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.0",
+    "@grpc/proto-loader": "^0.7.10",
+    "@solana/web3.js": "^1.87.6",
+    "@triton-one/yellowstone-grpc": "^4.0.2",
+    "bs58": "^6.0.0",
+    "dotenv": "^16.4.5",
+    "jito-ts": "^4.0.0",
+    "rpc-websockets": "^7.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=8.0.0"
+  },
+  "os": [
+    "win32",
+    "linux",
+    "darwin"
+  ],
+  "platform": [
+    "x64",
+    "arm64"
+  ]
+}
