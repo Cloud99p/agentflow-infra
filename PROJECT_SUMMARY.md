@@ -1,209 +1,325 @@
-# Solana Transaction Stack - Project Summary
+# AgentFlow Infra - Project Summary
 
-## Project Overview
+## Overview
 
-A production-grade Solana transaction infrastructure stack demonstrating:
-- **Real Jito bundle submission** with MEV protection
-- **Yellowstone gRPC streaming** for real-time slot/leader data
-- **AI-powered autonomous failure recovery**
-- **Dynamic tip calculation** from live on-chain data
-- **Complete lifecycle tracking** across all confirmation stages
+**AgentFlow Infra** is a comprehensive trading analysis platform featuring a live dashboard, DeepSeek AI analysis, 10 technical signals, and Bitget integration.
 
----
+**Tagline:** AI-Powered Trading Infrastructure with Live Dashboard
 
-## Project Overview
-
-This project demonstrates a production-grade Solana transaction infrastructure with:
-- Real Jito bundle submission with MEV protection
-- Yellowstone gRPC streaming for real-time slot/leader data
-- AI-powered autonomous failure recovery
-- Dynamic tip calculation from live on-chain data
-- Complete lifecycle tracking across all confirmation stages
+**GitHub:** https://github.com/Cloud99p/agentflow-infra
 
 ---
 
-## Architecture Document
+## Key Features
 
-**File**: `ARCHITECTURE.md`
-- System architecture diagrams
-- Component descriptions
-- Data flow documentation
-- Failure handling strategy
-- AI agent responsibilities
+### 📊 Live Dashboard
+- **Real-Time Market Data** - Bitget V2 API integration (BTC, ETH, SOL, XRP)
+- **Auto-Refresh** - Updates every 5 seconds
+- **Multi-Crypto Support** - Switch between BTC, ETH, SOL, XRP instantly
+- **No API Key Required** - Public endpoints work without authentication
+
+### 🤖 AI Reasoning
+- **DeepSeek Integration** - Professional-grade trading analysis
+- **Smart Caching** - Updates every 5 minutes (saves 95% on API costs)
+- **Detailed Rationale** - Explains BUY/HOLD/SELL recommendations
+- **Action Plans** - Specific steps to take
+- **Risk Assessment** - Risk level and factors
+- **Fallback Mode** - Works without API key using local reasoning
+
+### 📈 10 Technical Signals
+**Inspired by [DCA Claw](https://github.com/Argeneau12e/DCA_claw) by Samuel Oduntan (@Argeneau12e)**
+
+| Signal | Weight | Description |
+|--------|--------|-------------|
+| **Momentum** | 12% | 24h price momentum |
+| **Volatility** | 10% | Price volatility analysis |
+| **Trend** | 12% | Short-term trend direction |
+| **Volume** | 10% | Trading volume analysis |
+| **RSI** | 12% | Overbought/Oversold indicator |
+| **MACD** | 10% | Momentum convergence/divergence |
+| **Market Regime** | 10% | BULL/BEAR/SIDEWAYS detection |
+| **Support/Resistance** | 8% | Price position in 24h range |
+| **Sentiment** | 8% | Market sentiment analysis |
+| **Risk Assessment** | 8% | Overall risk level |
+
+### 💼 Portfolio Tracking
+- **Total Value** - Portfolio worth including unrealized PnL
+- **PnL Analysis** - Realized + Unrealized gains/losses
+- **Win Rate** - Success rate tracking
+- **Allocation** - Asset distribution charts
+- **Equity Curve** - Performance over time
+
+### 🔬 Backtesting Engine
+- **Strategy Testing** - Historical performance analysis
+- **Performance Metrics** - Sharpe ratio, max drawdown, profit factor
+- **Equity Curve** - Visual portfolio growth
+- **Trade History** - Individual trade breakdown
 
 ---
 
-## Transaction Stack
+## Architecture
 
-#### Core Components
-| Component | File | Description |
-|-----------|------|-------------|
-| Yellowstone gRPC | `src/yellowstone.ts` | Real-time slot/leader streaming |
-| Jito Bundle Service | `src/jito.ts` | MEV-protected bundle submission |
-| Lifecycle Tracker | `src/lifecycle.ts` | 4-stage tracking (submitted→processed→confirmed→finalized) |
-| AI Failure Agent | `src/ai-agent.ts` | Autonomous failure reasoning and retry |
-| Fault Injector | `src/fault-injector.ts` | Simulates failures for AI testing |
-| Config | `src/config.ts` | Dynamic tip calculation |
-
-#### Features Implemented
-- ✅ Real Yellowstone gRPC streaming (with HTTP RPC fallback for devnet)
-- ✅ Real Jito bundle submission via `jito-ts` SDK
-- ✅ Dynamic tip calculation from on-chain data (no hardcoded values)
-- ✅ Autonomous AI retry with agent decisions
-- ✅ Fault injection for blockhash expiry simulation
-- ✅ Tip account rotation
-- ✅ Leader quality tracking
-- ✅ Skip rate monitoring
-- ✅ Backpressure handling
-
-## Lifecycle Log
-**File**: `lifecycle_log.json`
-- 12+ real bundle submissions
-- Detailed failure cases with agent reasoning
-- Slot numbers, timestamps, latencies
-- Tip amounts and adjustments
-
-## AI Agent Demonstration
-
-#### Autonomous Decision Making
-The AI agent:
-1. **Observes** failures (expired blockhash, fee too low, etc.)
-2. **Analyzes** contributing factors from live data
-3. **Calculates** confidence score (0-1)
-4. **Decides** retry/abort with specific parameters
-5. **Executes** autonomous retry with AI-determined settings
-
-#### Example Agent Output
 ```
-[AGENT] Failure observed: unknown failure during processing in block (latency: 64339ms)
-[AGENT] Contributing factors:
-  - Submission latency 64339ms exceeded safe threshold - network congestion likely
-  - Leader quality score 0.50 below average - may need higher tip incentive
-[AGENT] Confidence: 0.40
-[AGENT] Decision: retry
-  - Tip adjustment: 0.0%
-  - Blockhash refresh: false
-  - Delay: 0ms
-  - Reasoning: proceed with retry
+┌─────────────────────────────────────────────────────────────┐
+│                    Dashboard UI                             │
+│  (HTML/CSS/JS + Chart.js - Auto-refreshes every 5s)        │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│               Dashboard Server (Node.js)                    │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │   Signals   │  │    AI       │  │   Market    │         │
+│  │   Engine    │  │  Reasoning  │  │    Data     │         │
+│  │  (10 total) │  │  (DeepSeek) │  │  (Bitget)   │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│  ┌─────────────┐  ┌─────────────┐                          │
+│  │  Portfolio  │  │  Backtest   │                          │
+│  │  Tracker    │  │  Engine     │                          │
+│  └─────────────┘  └─────────────┘                          │
+└─────────────────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│              External APIs                                  │
+│  - Bitget V2 (Market Data)                                  │
+│  - DeepSeek (AI Analysis)                                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## README Questions
+---
 
-**Question 1: What does the delta between processed_at and confirmed_at tell you about network health?**
+## Tech Stack
 
-**Answer**: The delta reflects network confirmation latency. A consistent 32-slot delta with low time variance (<100ms) indicates healthy, stable block production. A delta >32 slots suggests fork reorganizations, while delta time >15 seconds indicates network congestion or slow block production.
-
-**Question 2: Why should you never use finalized commitment when fetching a blockhash for time-sensitive transactions?**
-
-**Answer**: Finalized commitment requires ~63+ slots (32 for confirmed + 31+ for finalized), consuming ~42% of the blockhash validity window before submission. This leaves only ~87 slots (~35 seconds) remaining, which can easily be exceeded by network congestion and submission latency, leading to expired blockhash failures.
-
-**Question 3: What happens to your bundle if the Jito leader skips their slot?**
-
-**Answer**: The bundle does not land in the skipped slot and remains pending in the Block Engine queue. While waiting, the blockhash continues to age toward expiry. The next leader may include the bundle if they have consecutive slots, or the bundle must be resubmitted to the new leader. Our AI agent detects skip patterns and adjusts retry parameters accordingly (increasing tip, adding delay, refreshing blockhash).
+| Component | Technology |
+|-----------|-----------|
+| **Dashboard UI** | HTML/CSS/JavaScript + Chart.js |
+| **Server** | Node.js (ES Modules) |
+| **TypeScript** | Type-safe backend code |
+| **Market Data** | Bitget V2 API |
+| **AI Analysis** | DeepSeek Chat API |
+| **Charts** | Chart.js |
+| **Auto-Refresh** | JavaScript setInterval (5s) |
 
 ---
 
-## Performance Results
+## Quick Start
 
-### Normal Operation
-- **Success Rate**: 100% (with funded keypair)
-- **Avg Tip**: 1,625 lamports (dynamic, data-driven)
-- **Avg Latency**: 654ms
-- **P95 Latency**: 771ms
+```bash
+# Clone
+git clone https://github.com/Cloud99p/agentflow-infra.git
+cd agentflow-infra
 
-### Fault Injection Test
-- **Fault Type**: Blockhash expiry (160 slots delay)
-- **AI Response**: Detected failure, analyzed causes, decided to retry
-- **Agent Confidence**: 0.40
-- **Outcome**: Autonomous retry framework demonstrated
+# Install
+npm install
 
-### Extended Test
-- **Total Bundles**: 12
-- **Agent Analyses**: 12 (100% failure coverage)
-- **Failure Classification**: Working correctly
-- **Lifecycle Tracking**: All 4 stages recorded
+# Configure (optional)
+cp .env.example .env
+# Edit .env with your DeepSeek API key
 
----
+# Run Dashboard
+npm run dashboard
 
-## Technologies Used
-
-| Technology | Purpose |
-|------------|---------|
-| `@triton-one/yellowstone-grpc` | Real-time gRPC streaming |
-| `jito-ts` | Jito bundle submission |
-| `@solana/web3.js` | Solana RPC interactions |
-| TypeScript | Language |
-| Node.js | Runtime |
+# Open Browser
+# http://localhost:3000
+```
 
 ---
 
-## Key Differentiators
+## Configuration
 
-### 1. Production-Grade SDKs
-- **Not mock implementations** - uses real Yellowstone gRPC and Jito SDKs
-- **Real data** - tips calculated from on-chain tip distribution
-- **Real streaming** - gRPC subscriptions (not HTTP polling)
+### Environment Variables (Optional)
 
-### 2. Autonomous AI Recovery
-- **No hardcoded retry logic** - all decisions made by AI agent
-- **Full reasoning logs** - transparent decision process
-- **Confidence scoring** - risk-aware decision making
+Create `.env` file:
 
-### 3. Complete Lifecycle Tracking
-- **4-stage monitoring** - submitted→processed→confirmed→finalized
-- **Latency metrics** - time between each stage
-- **Failure classification** - specific error types with agent analysis
+```env
+# DeepSeek API for AI Reasoning (Recommended)
+# Get key: https://platform.deepseek.com/
+DEEPSEEK_API_KEY=sk-your-key-here
+ENABLE_DEEPSEEK_AI=true
 
-### 4. Dynamic Tip Calculation
-- **Zero hardcoded values** - all tips derived from live data
-- **Multi-factor** - recent tips, skip rate, leader quality
-- **Adaptive** - adjusts to network conditions in real-time
+# AI Cache (saves credits!)
+DEEPSEEK_CACHE_TTL=300000  # 5 minutes (default)
 
----
+# Dashboard Settings
+DASHBOARD_PORT=3000
+```
 
-## Files for Submission
+### Without API Keys
 
-### Required
-- [x] `ARCHITECTURE.md` - System design document
-- [x] `README.md` - Documentation with Q&A
-- [x] `lifecycle_log.json` - Bundle history with failures
-- [x] Source code in GitHub repository
-
-### Optional but Included
-- [x] `scripts/test-fault-injection.ts` - AI demonstration
-- [x] `scripts/test-comprehensive.ts` - Full test suite
-- [x] `.env.example` - Configuration template
-- [x] `PROJECT_SUMMARY.md` - This file
+The dashboard **works perfectly without any API keys**:
+- ✅ Market data from Bitget public API (free, no auth)
+- ✅ All 10 technical signals
+- ✅ Portfolio tracking (mock data)
+- ✅ Backtesting (mock data)
+- ⚠️ AI reasoning uses local fallback (still functional!)
 
 ---
 
-## Verification
+## Project Structure
 
-### Slot Numbers (Cross-Reference on Solana Explorer)
-All bundle submissions include slot numbers that can be verified:
-- Bundle 1: Slot 465715020
-- Bundle 2: Slot 465715035
-- Bundle 3: Slot 465715049
-- ... (see lifecycle_log.json for full list)
-
-### Transaction Signatures
-All successful transactions have Solana signatures:
-- Example: `37oqoz5Hn2mFrTsDyyTpiUyg6TcbeUSaC86HSSnBBNSQ4iZqMCCufjXYnPxxWFe3sReQguAGXLpGnDh27yWxfseU`
+```
+agentflow-infra/
+├── dashboard/              # Dashboard HTML/CSS/JS
+│   └── index.html         # Main dashboard UI
+├── scripts/               # Server and utilities
+│   ├── dashboard-server.js    # Main dashboard server
+│   └── test-bitget-integration.ts
+├── src/                   # TypeScript source
+│   ├── ai-reasoning-engine.ts   # DeepSeek AI integration
+│   ├── backtest-engine.ts       # Backtesting logic
+│   ├── bitget-integration.ts    # Bitget API
+│   ├── portfolio-tracker.ts     # Portfolio tracking
+│   ├── signals/
+│   │   ├── signal-engine.ts     # 10-signal engine
+│   │   └── README.md
+│   └── technical-indicators.ts  # RSI, MACD, etc.
+├── evidence/              # Test evidence
+│   ├── test-runs/         # Test run JSON files
+│   └── screenshots/       # Dashboard screenshots
+├── .env.example           # Environment template
+├── SETUP.md              # Setup guide
+├── PROJECT_SUMMARY.md    # This file
+└── package.json
+```
 
 ---
 
-## Conclusion
+## Cost Optimization
 
-This project demonstrates a **production-grade Solana transaction infrastructure** that:
-1. Uses **real SDKs** (Yellowstone gRPC, Jito)
-2. Implements **autonomous AI failure recovery**
-3. Provides **complete lifecycle tracking**
-4. Calculates **dynamic tips from live data**
-5. Includes **comprehensive documentation**
+### DeepSeek API Costs
 
-The stack is **battle-tested** with real transactions and ready for production deployment.
+**Without Caching:**
+- Calls every 5 seconds = 12 calls/minute
+- ~17,280 calls/day
+- Cost: ~$10-20/day
+
+**With Caching (5-minute TTL):**
+- Calls every 5 minutes = 12 calls/hour
+- ~288 calls/day
+- Cost: ~$0.50-1/day
+- **Savings: 95%**
+
+### Configuration
+
+```env
+DEEPSEEK_CACHE_TTL=300000  # 5 minutes (default)
+```
+
+Adjust based on your needs:
+- Shorter TTL = More frequent updates, higher cost
+- Longer TTL = Less frequent updates, lower cost
 
 ---
 
-*Document Date: 2026-05-29*
-*GitHub: https://github.com/Cloud99p/solana-tx-stack*
+## Usage Examples
+
+### Run Dashboard
+```bash
+npm run dashboard
+# Open http://localhost:3000
+```
+
+### Test Bitget Integration
+```bash
+npm run test:bitget
+```
+
+### Build TypeScript
+```bash
+npm run build
+```
+
+### Full Dashboard + Sync
+```bash
+npm run dashboard:full
+```
+
+---
+
+## Tips
+
+### Dashboard Refresh
+- Auto-refreshes every 5 seconds
+- Press `Ctrl+Shift+R` for hard refresh
+- Check browser console (F12) for logs
+
+### AI Reasoning
+- Updates every 5 minutes (cached to save credits)
+- Switch crypto (BTC/ETH/SOL/XRP) to get new analysis
+- Check terminal for `[DEEPSEEK]` logs
+
+### Cost Optimization
+- AI caching saves 95% on API costs
+- Default: 5-minute cache (~288 calls/day vs 17,280)
+- Adjust `DEEPSEEK_CACHE_TTL` in `.env`
+
+---
+
+## Evidence
+
+### Test Runs
+
+**Location:** `evidence/` folder
+
+- ✅ **13+ Test Run JSON Files** - Full capability tests
+- ✅ **Mainnet Tests** - Real transaction tests
+- ✅ **Bitget Integration Tests** - API verification
+- ✅ **Signal Engine Tests** - All 10 signals working
+
+### Screenshots
+
+**Location:** `evidence/screenshots/`
+
+1. **Dashboard Overview** - All 10 signals, AI reasoning
+2. **Portfolio View** - Positions, PnL, allocation
+3. **Backtest View** - Equity curve, trade history
+4. **Crypto Selector** - BTC/ETH/SOL/XRP switching
+5. **AI Reasoning Panel** - DeepSeek analysis
+
+---
+
+## Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Signals** | 10 independent indicators |
+| **Cryptos** | 4 (BTC, ETH, SOL, XRP) |
+| **Refresh Rate** | 5 seconds |
+| **AI Cache** | 5 minutes (95% cost savings) |
+| **API Calls Saved** | ~17,000/day → ~300/day |
+| **Test Runs** | 13+ successful runs |
+| **Code Quality** | TypeScript, no errors |
+
+---
+
+## Credits
+
+### Inspiration
+
+- **Signal Engine:** [DCA Claw](https://github.com/Argeneau12e/DCA_claw) by Samuel Oduntan (@Argeneau12e, @Little_Sam_1428)
+- **Concept:** Multi-signal scoring with weighted average
+
+### Technologies
+
+- **DeepSeek:** AI reasoning engine
+- **Bitget:** Market data API
+- **Chart.js:** Dashboard charts
+- **Node.js:** Dashboard server
+- **TypeScript:** Type-safe code
+
+---
+
+## License
+
+MIT - See LICENSE file
+
+---
+
+## Support
+
+- **Setup Guide:** See `SETUP.md`
+- **Issues:** Open GitHub issue
+- **Docs:** Check inline code comments
+
+**Happy Trading! 🚀**

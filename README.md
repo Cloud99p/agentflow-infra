@@ -2,7 +2,7 @@
 
 ## AI-Powered Trading Infrastructure with Real-Time Dashboard
 
-**Production-grade trading infrastructure** featuring a live dashboard, DeepSeek AI analysis, 10 technical signals, and Bitget integration. Built for the **Bitget AI Trading Hackathon S1**.
+**Production-grade trading infrastructure** featuring a live dashboard, DeepSeek AI analysis, 10 technical signals, and Bitget integration.
 
 ---
 
@@ -200,20 +200,9 @@ agentflow-infra/
 
 ---
 
-## 🏆 Hackathon Submission
+## 📁 Evidence
 
-**Built for:** Bitget AI Trading Hackathon S1
-
-**Key Features:**
-- ✅ Bitget V2 API integration (real-time market data)
-- ✅ 10-signal scoring engine (inspired by DCA Claw)
-- ✅ DeepSeek AI reasoning (professional analysis)
-- ✅ Live dashboard (auto-refresh every 5s)
-- ✅ Portfolio tracking
-- ✅ Backtesting engine
-- ✅ Multi-crypto support (BTC/ETH/SOL/XRP)
-
-**Evidence:** See `evidence/` folder for:
+**Test runs and screenshots:** See `evidence/` folder
 - Test run JSON files (13+ runs)
 - Dashboard screenshots
 - Performance metrics
