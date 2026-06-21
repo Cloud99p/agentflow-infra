@@ -107,6 +107,64 @@ function loadLifecycleData() {
 }
 
 /**
+ * Generate AI reasoning from signals
+ */
+function generateAIReasoning(signals, totalScore, recommendation, marketData) {
+  const bullishSignals = signals.filter(s => s.score >= 60);
+  const bearishSignals = signals.filter(s => s.score < 40);
+  
+  const reasoning = {
+    timestamp: Date.now(),
+    decision: recommendation,
+    confidence: Math.round((Math.min(1, signals.length / 10)) * 100),
+    summary: '',
+    keyPoints: [],
+    action: 'HOLD',
+    rationale: ''
+  };
+  
+  // Generate summary
+  if (recommendation === 'STRONG_BUY' || recommendation === 'BUY') {
+    reasoning.summary = `Bullish setup detected with ${bullishSignals.length} strong signals. Market sentiment is positive.`;
+    reasoning.action = recommendation === 'STRONG_BUY' ? 'STRONG_BUY' : 'BUY';
+  } else if (recommendation === 'SELL' || recommendation === 'STRONG_SELL') {
+    reasoning.summary = `Bearish setup detected with ${bearishSignals.length} weak signals. Consider reducing exposure.`;
+    reasoning.action = recommendation === 'STRONG_SELL' ? 'STRONG_SELL' : 'SELL';
+  } else {
+    reasoning.summary = `Mixed signals detected. Market is in consolidation. Wait for clearer direction.`;
+    reasoning.action = 'HOLD';
+  }
+  
+  // Add key points
+  if (marketData.btc) {
+    const btcChange = parseFloat(marketData.btc.change24h) * 100;
+    reasoning.keyPoints.push(`BTC at $${parseFloat(marketData.btc.lastPr).toLocaleString()} (${btcChange > 0 ? '+' : ''}${btcChange.toFixed(2)}%)`);
+    
+    const momentumSignal = signals.find(s => s.name === 'Momentum');
+    if (momentumSignal && momentumSignal.score >= 60) {
+      reasoning.keyPoints.push('Positive momentum with strong 24h performance');
+    }
+    
+    const volumeSignal = signals.find(s => s.name === 'Volume');
+    if (volumeSignal && volumeSignal.score >= 70) {
+      reasoning.keyPoints.push('High volume confirms price movement');
+    }
+    
+    const rsiSignal = signals.find(s => s.name === 'RSI');
+    if (rsiSignal) {
+      if (rsiSignal.score < 30) reasoning.keyPoints.push('RSI indicates oversold conditions');
+      else if (rsiSignal.score > 70) reasoning.keyPoints.push('RSI indicates overbought conditions');
+    }
+  }
+  
+  // Generate detailed rationale
+  reasoning.rationale = `${reasoning.summary} Key factors: ${reasoning.keyPoints.join('. ')}. ` +
+    `Overall score: ${totalScore.toFixed(1)}/100 with ${bullishSignals.length} bullish, ${neutral} neutral, and ${bearishSignals.length} bearish signals.`;
+  
+  return reasoning;
+}
+
+/**
  * Generate signal analysis from real market data
  */
 async function generateSignals() {
@@ -121,20 +179,21 @@ async function generateSignals() {
     const btcChange = parseFloat(marketData.btc.change24h) || 0;
     const btcChangePercent = btcChange * 100; // Convert to percentage
     const btcPrice = parseFloat(marketData.btc.lastPr) || 0;
+    const btcVolume = parseFloat(marketData.btc.usdt24h) || 0;
+    const btcHigh = parseFloat(marketData.btc.high24h) || 0;
+    const btcLow = parseFloat(marketData.btc.low24h) || 0;
     
-    // Momentum Signal (15% weight)
+    // 1. Momentum Signal (12% weight)
     const momentumScore = btcChangePercent > 5 ? 80 : btcChangePercent > 2 ? 65 : btcChangePercent > 0 ? 55 : btcChangePercent > -2 ? 45 : btcChangePercent > -5 ? 35 : 20;
     signals.push({
       name: 'Momentum',
       score: momentumScore,
-      weight: 0.15,
+      weight: 0.12,
       rationale: `24h change: ${btcChangePercent.toFixed(2)}%, price: $${btcPrice.toLocaleString()}`,
       timestamp: Date.now()
     });
     
-    // Volatility Signal (10% weight)
-    const btcHigh = parseFloat(marketData.btc.high24h) || 0;
-    const btcLow = parseFloat(marketData.btc.low24h) || 0;
+    // 2. Volatility Signal (10% weight)
     const volatility = btcLow > 0 ? ((btcHigh - btcLow) / btcLow) * 100 : 0;
     const volatilityScore = volatility > 3 && volatility < 10 ? 75 : volatility >= 10 && volatility < 15 ? 60 : volatility < 3 ? 40 : 30;
     signals.push({
@@ -145,17 +204,49 @@ async function generateSignals() {
       timestamp: Date.now()
     });
     
-    // Trend Signal (15% weight)
+    // 3. Trend Signal (12% weight)
     const trendScore = btcChangePercent > 3 ? 80 : btcChangePercent > 0 ? 60 : btcChangePercent > -3 ? 40 : 20;
     signals.push({
       name: 'Trend',
       score: trendScore,
-      weight: 0.15,
+      weight: 0.12,
       rationale: `Short-term trend: ${btcChangePercent > 0 ? 'BULLISH' : 'BEARISH'} (${btcChangePercent.toFixed(2)}%)`,
       timestamp: Date.now()
     });
     
-    // Market Regime Signal (10% weight)
+    // 4. Volume Analysis Signal (10% weight)
+    const volumeScore = btcVolume > 1_000_000_000 ? 85 : btcVolume > 100_000_000 ? 70 : btcVolume > 10_000_000 ? 55 : 35;
+    signals.push({
+      name: 'Volume',
+      score: volumeScore,
+      weight: 0.10,
+      rationale: `24h volume: $${(btcVolume / 1_000_000).toFixed(0)}M`,
+      timestamp: Date.now()
+    });
+    
+    // 5. RSI Signal (12% weight) - Simulated (would need historical data for real RSI)
+    const simulatedRSI = 50 + (btcChangePercent * 2); // Simplified simulation
+    const rsiScore = simulatedRSI < 20 ? 85 : simulatedRSI < 30 ? 70 : simulatedRSI < 45 ? 55 : simulatedRSI < 55 ? 50 : simulatedRSI < 65 ? 45 : simulatedRSI < 75 ? 30 : 15;
+    signals.push({
+      name: 'RSI',
+      score: Math.max(0, Math.min(100, rsiScore)),
+      weight: 0.12,
+      rationale: `RSI: ${Math.max(0, Math.min(100, simulatedRSI)).toFixed(1)} (Simulated)`,
+      timestamp: Date.now()
+    });
+    
+    // 6. MACD Signal (10% weight) - Simulated
+    const macdHistogram = btcChangePercent * 0.5; // Simplified simulation
+    const macdScore = macdHistogram > 0 ? 70 : macdHistogram > -1 ? 50 : 30;
+    signals.push({
+      name: 'MACD',
+      score: macdScore,
+      weight: 0.10,
+      rationale: `MACD Histogram: ${macdHistogram.toFixed(2)} (${macdHistogram > 0 ? 'Bullish' : 'Bearish'})`,
+      timestamp: Date.now()
+    });
+    
+    // 7. Market Regime Signal (10% weight)
     let regime = 'SIDEWAYS';
     let regimeScore = 50;
     if (btcChangePercent > 5) { regime = 'BULL'; regimeScore = 85; }
@@ -171,6 +262,37 @@ async function generateSignals() {
       timestamp: Date.now(),
       data: { regime, change24h: btcChangePercent }
     });
+    
+    // 8. Support/Resistance Signal (8% weight)
+    const rangePosition = ((btcPrice - btcLow) / (btcHigh - btcLow)) * 100;
+    const srScore = 100 - rangePosition;
+    signals.push({
+      name: 'Support/Resistance',
+      score: Math.max(0, Math.min(100, srScore)),
+      weight: 0.08,
+      rationale: `Price position: ${rangePosition.toFixed(1)}% of 24h range (${rangePosition > 50 ? 'Near Resistance' : 'Near Support'})`,
+      timestamp: Date.now()
+    });
+    
+    // 9. Sentiment Signal (8% weight) - Simulated
+    const sentimentScore = btcChangePercent > 0 ? 60 + Math.min(20, btcChangePercent * 2) : 40 - Math.min(20, Math.abs(btcChangePercent) * 2);
+    signals.push({
+      name: 'Sentiment',
+      score: Math.max(0, Math.min(100, sentimentScore)),
+      weight: 0.08,
+      rationale: `Market sentiment: ${sentimentScore > 60 ? 'Bullish' : sentimentScore > 40 ? 'Neutral' : 'Bearish'}`,
+      timestamp: Date.now()
+    });
+    
+    // 10. Risk Signal (8% weight)
+    const riskScore = Math.max(0, 100 - volatility * 5);
+    signals.push({
+      name: 'Risk Assessment',
+      score: riskScore,
+      weight: 0.08,
+      rationale: `Risk level: ${riskScore > 70 ? 'LOW' : riskScore > 40 ? 'MEDIUM' : 'HIGH'} (vol: ${volatility.toFixed(2)}%)`,
+      timestamp: Date.now()
+    });
   }
   
   // Calculate overall score
@@ -182,15 +304,18 @@ async function generateSignals() {
   // Determine recommendation
   let recommendation = 'HOLD';
   if (weightedScore >= 80) recommendation = 'STRONG_BUY';
-  else if (weightedScore >= 60) recommendation = 'BUY';
-  else if (weightedScore >= 40) recommendation = 'HOLD';
-  else if (weightedScore >= 20) recommendation = 'SELL';
+  else if (weightedScore >= 65) recommendation = 'BUY';
+  else if (weightedScore >= 50) recommendation = 'HOLD';
+  else if (weightedScore >= 35) recommendation = 'SELL';
   else recommendation = 'STRONG_SELL';
   
   // Count bullish/neutral/bearish signals
   const bullish = signals.filter(s => s.score >= 60).length;
   const neutral = signals.filter(s => s.score >= 40 && s.score < 60).length;
   const bearish = signals.filter(s => s.score < 40).length;
+  
+  // Generate AI reasoning
+  const aiReasoning = generateAIReasoning(signals, weightedScore, recommendation, marketData);
   
   return {
     timestamp: Date.now(),
@@ -205,6 +330,7 @@ async function generateSignals() {
       bearish,
       marketRegime: signals.find(s => s.name === 'Market Regime')?.data?.regime || 'UNKNOWN'
     },
+    aiReasoning,
     marketData: {
       btc: marketData.btc,
       eth: marketData.eth
