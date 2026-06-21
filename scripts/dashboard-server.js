@@ -17,9 +17,18 @@ const PORT = process.env.DASHBOARD_PORT || 3000;
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const ENABLE_DEEPSEEK_AI = process.env.ENABLE_DEEPSEEK_AI !== 'false';
 const ENABLE_BITGET_TESTNET = process.env.ENABLE_BITGET_TESTNET === 'true';
+const DEEPSEEK_CACHE_TTL = 300000; // 5 minutes cache
+
+// Cache for AI reasoning (to avoid burning credits)
+let aiReasoningCache = {
+  data: null,
+  timestamp: 0,
+  symbol: null
+};
 
 console.log('[CONFIG] DeepSeek AI:', DEEPSEEK_API_KEY ? 'Enabled' : 'Disabled (no API key)');
 console.log('[CONFIG] Bitget Testnet:', ENABLE_BITGET_TESTNET ? 'Enabled' : 'Disabled (using public API)');
+console.log('[CONFIG] AI Cache TTL:', DEEPSEEK_CACHE_TTL / 1000, 'seconds');
 
 // Cache for market data
 let marketDataCache = {
@@ -199,6 +208,17 @@ function generateLocalReasoning(signals, totalScore, recommendation, marketData,
  * Generate AI reasoning using DeepSeek API (if enabled)
  */
 async function generateAIReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish, symbol = 'BTCUSDT') {
+  const now = Date.now();
+  
+  // Return cached AI reasoning if still valid (saves credits!)
+  if (aiReasoningCache.data && 
+      aiReasoningCache.symbol === symbol &&
+      (now - aiReasoningCache.timestamp) < DEEPSEEK_CACHE_TTL) {
+    const cacheAge = Math.round((now - aiReasoningCache.timestamp) / 1000);
+    console.log(`[DEEPSEEK] Using cached reasoning (${cacheAge}s old)`);
+    return aiReasoningCache.data;
+  }
+  
   // Use DeepSeek if enabled and API key is available
   if (ENABLE_DEEPSEEK_AI && DEEPSEEK_API_KEY) {
     try {
@@ -254,9 +274,9 @@ Provide a concise JSON response: {"decision":"BUY|HOLD|SELL","confidence":0-100,
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const deepSeekReasoning = JSON.parse(jsonMatch[0]);
-          console.log('[DEEPSEEK] AI reasoning generated successfully');
+          console.log('[DEEPSEEK] AI reasoning generated successfully (NEW)');
           
-          return {
+          const reasoningResult = {
             timestamp: Date.now(),
             decision: deepSeekReasoning.decision || recommendation,
             confidence: deepSeekReasoning.confidence || 80,
@@ -267,6 +287,15 @@ Provide a concise JSON response: {"decision":"BUY|HOLD|SELL","confidence":0-100,
             riskAssessment: deepSeekReasoning.riskAssessment || 'Medium risk',
             actionPlan: deepSeekReasoning.actionPlan || ['Monitor closely']
           };
+          
+          // Cache the result
+          aiReasoningCache = {
+            data: reasoningResult,
+            timestamp: now,
+            symbol: symbol
+          };
+          
+          return reasoningResult;
         }
       }
     } catch (error) {
