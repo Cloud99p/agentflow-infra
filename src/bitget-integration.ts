@@ -216,11 +216,11 @@ export class BitgetIntegration {
         return {
           symbol: symbol,
           lastPr: String(data.close || data.lastPr || data.last || data.closePrice || '0'),
-          high24h: String(data.high24h || data.high || data.high24h || '0'),
-          low24h: String(data.low24h || data.low || data.low24h || '0'),
+          high24h: String(data.high24h || data.high || '0'),
+          low24h: String(data.low24h || data.low || '0'),
           change24h: String(data.chg24h || data.change24h || data.change || data.changePercent || '0'),
-          vol24h: String(data.vol || data.vol24h || data.volume || '0'),
-          usdt24h: String(data.quoteVol || data.usdt24h || data.amount || data.turnover || '0'),
+          vol24h: String(data.vol || data.vol24h || data.volume || data.baseVolume || data.vol || '0'),
+          usdt24h: String(data.quoteVol || data.usdt24h || data.amount || data.turnover || data.quoteVolume || '0'),
         };
       }
       
