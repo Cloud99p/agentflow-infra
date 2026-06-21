@@ -4,6 +4,7 @@
  * Fetches real market data from Bitget and serves the dashboard
  */
 
+import 'dotenv/config';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
