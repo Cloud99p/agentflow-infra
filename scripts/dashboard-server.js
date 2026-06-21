@@ -303,18 +303,18 @@ const server = http.createServer(async (req, res) => {
 
 // Start server
 server.listen(PORT, () => {
-  console.log('╔═══════════════════════════════════════════════════════════╗');
-  console.log('║         🤖 AGENTFLOW INFRA - DASHBOARD SERVER            ║');
-  console.log('╠═══════════════════════════════════════════════════════════╣');
-  console.log(`║  🌐 Dashboard:  http://localhost:${PORT}                     ║');
-  console.log(`║  📊 API:        http://localhost:${PORT}/api/signals          ║');
-  console.log(`║  💰 Market:     http://localhost:${PORT}/api/market-data      ║');
-  console.log(`║  📦 Lifecycle:  http://localhost:${PORT}/api/lifecycle        ║');
-  console.log('╠═══════════════════════════════════════════════════════════╣');
-  console.log('║  ✅ Real-time data from Bitget                            ║');
-  console.log('║  ✅ 10-signal engine (inspired by DCA Claw)               ║');
-  console.log('║  ✅ Auto-refresh every 5 seconds                          ║');
-  console.log('╚═══════════════════════════════════════════════════════════╝');
+  console.log('===========================================');
+  console.log('  AGENTFLOW INFRA - DASHBOARD SERVER');
+  console.log('===========================================');
+  console.log(`  Dashboard:  http://localhost:${PORT}`);
+  console.log(`  API:        http://localhost:${PORT}/api/signals`);
+  console.log(`  Market:     http://localhost:${PORT}/api/market-data`);
+  console.log(`  Lifecycle:  http://localhost:${PORT}/api/lifecycle`);
+  console.log('===========================================');
+  console.log('  Real-time data from Bitget');
+  console.log('  10-signal engine (inspired by DCA Claw)');
+  console.log('  Auto-refresh every 5 seconds');
+  console.log('===========================================');
 });
 
 // Handle graceful shutdown
