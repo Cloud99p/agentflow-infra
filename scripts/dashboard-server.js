@@ -61,6 +61,118 @@ async function fetchBitgetTicker(symbol) {
 function getMockData(symbol) {
   const mockPrices = {
     'BTCUSDT': { price: 64000, change: 0.002, high: 64500, low: 63500, vol: 129000000 },
+    'ETHUSDT': { price: 1725, change: -0.003, high: 1750, low: 1715, vol: 80000000 },
+    'SOLUSDT': { price: 138, change: 0.01, high: 142, low: 135, vol: 25000000 },
+    'XRPUSDT': { price: 0.52, change: -0.005, high: 0.54, low: 0.51, vol: 15000000 }
+  };
+  
+  const mock = mockPrices[symbol] || mockPrices['BTCUSDT'];
+  const price = mock.price * (1 + (Math.random() - 0.5) * 0.001); // Small random variation
+  
+  return {
+    symbol: symbol,
+    lastPr: String(price.toFixed(2)),
+    high24h: String(mock.high),
+    low24h: String(mock.low),
+    change24h: String(mock.change),
+    vol24h: String(mock.vol),
+    usdt24h: String(mock.vol),
+    timestamp: Date.now()
+  };
+}
+
+/**
+ * Generate mock portfolio data
+ */
+function generateMockPortfolio() {
+  const positions = [
+    { symbol: 'BTCUSDT', amount: 0.05, entryPrice: 63500, currentPrice: 64174, side: 'long', openedAt: Date.now() - 86400000 },
+    { symbol: 'ETHUSDT', amount: 2.5, entryPrice: 1720, currentPrice: 1734, side: 'long', openedAt: Date.now() - 43200000 },
+    { symbol: 'SOLUSDT', amount: 50, entryPrice: 142, currentPrice: 138, side: 'long', openedAt: Date.now() - 21600000 }
+  ];
+  
+  const positionsWithPnL = positions.map(pos => {
+    const pnl = pos.side === 'long' ? (pos.currentPrice - pos.entryPrice) * pos.amount : (pos.entryPrice - pos.currentPrice) * pos.amount;
+    const pnlPercent = ((pos.currentPrice - pos.entryPrice) / pos.entryPrice) * 100;
+    return { ...pos, pnl, pnlPercent };
+  });
+  
+  const totalValue = positions.reduce((sum, pos) => sum + pos.currentPrice * pos.amount, 0);
+  const unrealizedPnL = positionsWithPnL.reduce((sum, pos) => sum + pos.pnl, 0);
+  const realizedPnL = 1250;
+  
+  return {
+    totalValue,
+    totalPnL: unrealizedPnL + realizedPnL,
+    totalPnLPercent: (unrealizedPnL + realizedPnL) / (totalValue - realizedPnL) * 100,
+    realizedPnL,
+    unrealizedPnL,
+    positions: positionsWithPnL,
+    allocation: positions.map(pos => ({ symbol: pos.symbol, percentage: (pos.currentPrice * pos.amount / totalValue) * 100 })),
+    winRate: 64,
+    totalTrades: 25,
+    winningTrades: 16,
+    losingTrades: 9,
+    avgWin: 185.50,
+    avgLoss: 95.20,
+    profitFactor: 1.95,
+    sharpeRatio: 1.42,
+    maxDrawdown: 450
+  };
+}
+
+/**
+ * Generate mock backtest data
+ */
+function generateMockBacktest() {
+  const trades = Array.from({ length: 15 }, (_, i) => {
+    const pnl = (Math.random() - 0.4) * 300;
+    return {
+      entryPrice: 63000 + Math.random() * 2000,
+      exitPrice: 63000 + Math.random() * 2000,
+      entryTime: Date.now() - (15 - i) * 86400000,
+      exitTime: Date.now() - (14 - i) * 86400000,
+      side: Math.random() > 0.5 ? 'long' : 'short',
+      amount: 0.01 + Math.random() * 0.04,
+      pnl,
+      pnlPercent: (pnl / 64000) * 100,
+      fees: 2.5,
+      exitReason: ['take-profit', 'stop-loss', 'signal-reverse'][Math.floor(Math.random() * 3)]
+    };
+  });
+  
+  const equityCurve = trades.map((t, i) => ({
+    timestamp: t.exitTime,
+    value: 10000 + trades.slice(0, i + 1).reduce((sum, trade) => sum + trade.pnl, 0)
+  }));
+  
+  const winningTrades = trades.filter(t => t.pnl > 0);
+  const losingTrades = trades.filter(t => t.pnl <= 0);
+  
+  return {
+    totalReturn: trades.reduce((sum, t) => sum + t.pnl, 0),
+    totalReturnPercent: (trades.reduce((sum, t) => sum + t.pnl, 0) / 10000) * 100,
+    totalTrades: trades.length,
+    winningTrades: winningTrades.length,
+    losingTrades: losingTrades.length,
+    winRate: (winningTrades.length / trades.length) * 100,
+    avgWin: winningTrades.length > 0 ? winningTrades.reduce((sum, t) => sum + t.pnl, 0) / winningTrades.length : 0,
+    avgLoss: losingTrades.length > 0 ? Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0) / losingTrades.length) : 0,
+    profitFactor: 1.85,
+    sharpeRatio: 1.35,
+    maxDrawdown: 520,
+    maxDrawdownPercent: 5.2,
+    avgTradeDuration: 28.5,
+    bestTrade: Math.max(...trades.map(t => t.pnl)),
+    worstTrade: Math.min(...trades.map(t => t.pnl)),
+    consecutiveWins: 5,
+    consecutiveLosses: 3,
+    trades,
+    equityCurve
+  };
+}
+  const mockPrices = {
+    'BTCUSDT': { price: 64000, change: 0.002, high: 64500, low: 63500, vol: 129000000 },
     'ETHUSDT': { price: 1725, change: -0.003, high: 1750, low: 1715, vol: 80000000 }
   };
   
@@ -456,6 +568,34 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(lifecycleData));
     } catch (error) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+    return;
+  }
+  
+  if (url.pathname === '/api/portfolio') {
+    try {
+      // Generate mock portfolio data (would integrate with real exchange API in production)
+      const portfolioData = generateMockPortfolio();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(portfolioData));
+    } catch (error) {
+      console.error('[DASHBOARD] Portfolio API error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+    return;
+  }
+  
+  if (url.pathname === '/api/backtest') {
+    try {
+      // Generate mock backtest data (would use real historical data in production)
+      const backtestData = generateMockBacktest();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(backtestData));
+    } catch (error) {
+      console.error('[DASHBOARD] Backtest API error:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: error.message }));
     }

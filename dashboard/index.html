@@ -517,7 +517,9 @@
 
         <div class="controls">
             <button class="btn btn-primary" onclick="refreshData()">🔄 Refresh Data</button>
-            <button class="btn btn-secondary" onclick="exportData()">📊 Export Report</button>
+            <button class="btn btn-secondary" onclick="showTab('dashboard')">📊 Dashboard</button>
+            <button class="btn btn-secondary" onclick="showTab('portfolio')">💼 Portfolio</button>
+            <button class="btn btn-secondary" onclick="showTab('backtest')">📈 Backtest</button>
             <button class="btn btn-secondary" onclick="toggleAutoRefresh()">⏸️ Pause Auto-Refresh</button>
             <span class="refresh-indicator">
                 <span class="dot"></span>
@@ -525,6 +527,7 @@
             </span>
         </div>
 
+        <div id="dashboardTab">
         <div class="stats-grid">
             <div class="stat-card">
                 <h3>Total Signals Scanned <span class="badge badge-info">10</span></h3>
@@ -607,6 +610,103 @@
                         <p>Waiting for AI analysis...</p>
                     </div>
                 </div>
+            </div>
+        </div>
+        </div>
+        
+        <!-- Portfolio Tab -->
+        <div id="portfolioTab" class="tab-content" style="display: none;">
+            <h2>💼 Portfolio Tracking</h2>
+            <div class="stats-grid" style="margin-top: 20px;">
+                <div class="stat-card">
+                    <h3>Total Value</h3>
+                    <div class="value" id="portfolioTotalValue">$0.00</div>
+                    <div class="label">Including unrealized PnL</div>
+                </div>
+                <div class="stat-card success">
+                    <h3>Total PnL</h3>
+                    <div class="value" id="portfolioTotalPnL">$0.00</div>
+                    <div class="label" id="portfolioTotalPnLPercent">0%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Win Rate</h3>
+                    <div class="value" id="portfolioWinRate">0%</div>
+                    <div class="label"><span id="portfolioWinningTrades">0</span>W / <span id="portfolioLosingTrades">0</span>L</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Profit Factor</h3>
+                    <div class="value" id="portfolioProfitFactor">0.00</div>
+                    <div class="label">Avg Win / Avg Loss</div>
+                </div>
+            </div>
+            
+            <div class="main-grid">
+                <div class="chart-card">
+                    <h3>📊 Equity Curve</h3>
+                    <canvas id="equityChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>📈 Allocation</h3>
+                    <canvas id="allocationChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <h3>📋 Open Positions</h3>
+                <div id="positionsList"></div>
+            </div>
+        </div>
+        
+        <!-- Backtest Tab -->
+        <div id="backtestTab" class="tab-content" style="display: none;">
+            <h2>📈 Backtest Results</h2>
+            <div class="stats-grid" style="margin-top: 20px;">
+                <div class="stat-card">
+                    <h3>Total Return</h3>
+                    <div class="value" id="backtestTotalReturn">$0.00</div>
+                    <div class="label" id="backtestTotalReturnPercent">0%</div>
+                </div>
+                <div class="stat-card success">
+                    <h3>Win Rate</h3>
+                    <div class="value" id="backtestWinRate">0%</div>
+                    <div class="label"><span id="backtestWinningTrades">0</span>W / <span id="backtestLosingTrades">0</span>L</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Profit Factor</h3>
+                    <div class="value" id="backtestProfitFactor">0.00</div>
+                    <div class="label">Avg Win / Avg Loss</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Sharpe Ratio</h3>
+                    <div class="value" id="backtestSharpeRatio">0.00</div>
+                    <div class="label">Risk-adjusted return</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Max Drawdown</h3>
+                    <div class="value" id="backtestMaxDrawdown">$0.00</div>
+                    <div class="label" id="backtestMaxDrawdownPercent">0%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Trades</h3>
+                    <div class="value" id="backtestTotalTrades">0</div>
+                    <div class="label">Avg duration: <span id="backtestAvgDuration">0</span>h</div>
+                </div>
+            </div>
+            
+            <div class="main-grid">
+                <div class="chart-card">
+                    <h3>📊 Equity Curve</h3>
+                    <canvas id="backtestEquityChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>📈 Trade Distribution</h3>
+                    <canvas id="tradeDistChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <h3>📋 Trade History</h3>
+                <div id="tradesList"></div>
             </div>
         </div>
     </div>
@@ -980,6 +1080,28 @@
 
         // Current active crypto
         let activeCrypto = 'BTCUSDT';
+        let equityChart, allocationChart, backtestEquityChart, tradeDistChart;
+        
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.getElementById('dashboardTab')?.style.setProperty('display', 'none');
+            document.getElementById('portfolioTab').style.display = 'none';
+            document.getElementById('backtestTab').style.display = 'none';
+            
+            // Show selected tab
+            if (tabName === 'dashboard') {
+                document.getElementById('dashboardTab').style.setProperty('display', 'block');
+            } else if (tabName === 'portfolio') {
+                document.getElementById('portfolioTab').style.display = 'block';
+                loadPortfolio();
+            } else if (tabName === 'backtest') {
+                document.getElementById('backtestTab').style.display = 'block';
+                loadBacktest();
+            }
+            
+            console.log('[DASHBOARD] Switched to tab:', tabName);
+        }
         
         // Select crypto to track
         function selectCrypto(symbol) {
@@ -1033,6 +1155,194 @@
             if (activeData) {
                 const price = parseFloat(activeData.lastPr) || 0;
                 document.getElementById('activePrice').textContent = `$${price.toLocaleString(undefined, {maximumFractionDigits: 2})}`;
+            }
+        }
+
+        // Load portfolio data
+        async function loadPortfolio() {
+            try {
+                const res = await fetch('/api/portfolio');
+                const portfolio = await res.json();
+                
+                console.log('[DASHBOARD] Portfolio data:', portfolio);
+                
+                // Update stats
+                document.getElementById('portfolioTotalValue').textContent = `$${portfolio.totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                const totalPnLEl = document.getElementById('portfolioTotalPnL');
+                totalPnLEl.textContent = `${portfolio.totalPnL >= 0 ? '+' : ''}$${portfolio.totalPnL.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                totalPnLEl.style.color = portfolio.totalPnL >= 0 ? '#00ff88' : '#ff4444';
+                document.getElementById('portfolioTotalPnLPercent').textContent = `${portfolio.totalPnLPercent >= 0 ? '+' : ''}${portfolio.totalPnLPercent.toFixed(2)}%`;
+                
+                document.getElementById('portfolioWinRate').textContent = `${portfolio.winRate.toFixed(1)}%`;
+                document.getElementById('portfolioWinningTrades').textContent = portfolio.winningTrades;
+                document.getElementById('portfolioLosingTrades').textContent = portfolio.losingTrades;
+                document.getElementById('portfolioProfitFactor').textContent = portfolio.profitFactor.toFixed(2);
+                
+                // Update positions list
+                const positionsList = document.getElementById('positionsList');
+                if (portfolio.positions && portfolio.positions.length > 0) {
+                    positionsList.innerHTML = portfolio.positions.map(pos => `
+                        <div class="signal-card ${pos.pnl >= 0 ? 'high' : 'low'}" style="margin-bottom: 10px;">
+                            <div class="signal-header">
+                                <span class="signal-name">${pos.symbol} (${pos.side.toUpperCase()})</span>
+                                <span class="signal-score ${pos.pnl >= 0 ? 'high' : 'low'}" style="color: ${pos.pnl >= 0 ? '#00ff88' : '#ff4444'}">
+                                    ${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toFixed(2)} (${pos.pnlPercent.toFixed(2)}%)
+                                </span>
+                            </div>
+                            <div class="signal-rationale">
+                                <div>Entry: $${pos.entryPrice.toLocaleString()} | Current: $${pos.currentPrice.toLocaleString()}</div>
+                                <div>Amount: ${pos.amount} | Opened: ${new Date(pos.openedAt).toLocaleDateString()}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    positionsList.innerHTML = '<p style="color: #888">No open positions</p>';
+                }
+                
+                // Update allocation chart
+                if (portfolio.allocation && portfolio.allocation.length > 0) {
+                    if (!allocationChart) {
+                        const ctx = document.getElementById('allocationChart').getContext('2d');
+                        allocationChart = new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: portfolio.allocation.map(a => a.symbol.replace('USDT', '')),
+                                datasets: [{
+                                    data: portfolio.allocation.map(a => a.percentage),
+                                    backgroundColor: ['#00d9ff', '#9945FF', '#14F195', '#0052FF']
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { position: 'bottom', labels: { color: '#888' } }
+                                }
+                            }
+                        });
+                    } else {
+                        allocationChart.data.labels = portfolio.allocation.map(a => a.symbol.replace('USDT', ''));
+                        allocationChart.data.datasets[0].data = portfolio.allocation.map(a => a.percentage);
+                        allocationChart.update();
+                    }
+                }
+                
+            } catch (error) {
+                console.error('[DASHBOARD] Failed to load portfolio:', error);
+            }
+        }
+        
+        // Load backtest data
+        async function loadBacktest() {
+            try {
+                const res = await fetch('/api/backtest');
+                const backtest = await res.json();
+                
+                console.log('[DASHBOARD] Backtest data:', backtest);
+                
+                // Update stats
+                document.getElementById('backtestTotalReturn').textContent = `$${backtest.totalReturn.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                const returnEl = document.getElementById('backtestTotalReturnPercent');
+                returnEl.textContent = `${backtest.totalReturnPercent >= 0 ? '+' : ''}${backtest.totalReturnPercent.toFixed(2)}%`;
+                returnEl.style.color = backtest.totalReturnPercent >= 0 ? '#00ff88' : '#ff4444';
+                
+                document.getElementById('backtestWinRate').textContent = `${backtest.winRate.toFixed(1)}%`;
+                document.getElementById('backtestWinningTrades').textContent = backtest.winningTrades;
+                document.getElementById('backtestLosingTrades').textContent = backtest.losingTrades;
+                document.getElementById('backtestProfitFactor').textContent = backtest.profitFactor.toFixed(2);
+                document.getElementById('backtestSharpeRatio').textContent = backtest.sharpeRatio.toFixed(2);
+                
+                const drawdownEl = document.getElementById('backtestMaxDrawdown');
+                drawdownEl.textContent = `$${backtest.maxDrawdown.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                document.getElementById('backtestMaxDrawdownPercent').textContent = `${backtest.maxDrawdownPercent.toFixed(2)}%`;
+                
+                document.getElementById('backtestTotalTrades').textContent = backtest.totalTrades;
+                document.getElementById('backtestAvgDuration').textContent = backtest.avgTradeDuration.toFixed(1);
+                
+                // Update equity curve chart
+                if (backtest.equityCurve && backtest.equityCurve.length > 0) {
+                    if (!backtestEquityChart) {
+                        const ctx = document.getElementById('backtestEquityChart').getContext('2d');
+                        backtestEquityChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: backtest.equityCurve.map((_, i) => i + 1),
+                                datasets: [{
+                                    label: 'Equity',
+                                    data: backtest.equityCurve.map(e => e.value),
+                                    borderColor: '#00ff88',
+                                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                                    tension: 0.4,
+                                    fill: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } },
+                                    x: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } }
+                                }
+                            }
+                        });
+                    } else {
+                        backtestEquityChart.data.labels = backtest.equityCurve.map((_, i) => i + 1);
+                        backtestEquityChart.data.datasets[0].data = backtest.equityCurve.map(e => e.value);
+                        backtestEquityChart.update();
+                    }
+                }
+                
+                // Update trade distribution chart
+                if (backtest.trades && backtest.trades.length > 0) {
+                    if (!tradeDistChart) {
+                        const ctx = document.getElementById('tradeDistChart').getContext('2d');
+                        tradeDistChart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: backtest.trades.map((_, i) => `Trade ${i + 1}`),
+                                datasets: [{
+                                    label: 'PnL',
+                                    data: backtest.trades.map(t => t.pnl),
+                                    backgroundColor: backtest.trades.map(t => t.pnl >= 0 ? '#00ff88' : '#ff4444')
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } },
+                                    x: { display: false }
+                                }
+                            }
+                        });
+                    } else {
+                        tradeDistChart.data.labels = backtest.trades.map((_, i) => `Trade ${i + 1}`);
+                        tradeDistChart.data.datasets[0].data = backtest.trades.map(t => t.pnl);
+                        tradeDistChart.data.datasets[0].backgroundColor = backtest.trades.map(t => t.pnl >= 0 ? '#00ff88' : '#ff4444');
+                        tradeDistChart.update();
+                    }
+                }
+                
+                // Update trades list
+                const tradesList = document.getElementById('tradesList');
+                if (backtest.trades && backtest.trades.length > 0) {
+                    tradesList.innerHTML = backtest.trades.slice(-10).reverse().map(t => `
+                        <div class="signal-card ${t.pnl >= 0 ? 'high' : 'low'}" style="margin-bottom: 10px;">
+                            <div class="signal-header">
+                                <span class="signal-name">${t.side.toUpperCase()} - ${t.exitReason.replace('-', ' ')}</span>
+                                <span class="signal-score ${t.pnl >= 0 ? 'high' : 'low'}" style="color: ${t.pnl >= 0 ? '#00ff88' : '#ff4444'}">
+                                    ${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}
+                                </span>
+                            </div>
+                            <div class="signal-rationale">
+                                <div>Entry: $${t.entryPrice.toLocaleString()} → Exit: $${t.exitPrice.toLocaleString()}</div>
+                                <div>PnL: ${t.pnlPercent.toFixed(2)}% | Fees: $${t.fees.toFixed(2)}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+            } catch (error) {
+                console.error('[DASHBOARD] Failed to load backtest:', error);
             }
         }
 
