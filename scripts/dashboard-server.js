@@ -195,20 +195,25 @@ function generateAIReasoning(signals, totalScore, recommendation, marketData) {
  * Generate signal analysis from real market data
  */
 async function generateSignals() {
-  const marketData = await getMarketData();
-  const lifecycleData = loadLifecycleData();
-  const bundles = lifecycleData.bundles || [];
-  
-  // Calculate real signal scores from market data
-  const signals = [];
-  
-  if (marketData.btc) {
-    const btcChange = parseFloat(marketData.btc.change24h) || 0;
+  try {
+    const marketData = await getMarketData();
+    const lifecycleData = loadLifecycleData();
+    const bundles = lifecycleData.bundles || [];
+    
+    // Calculate real signal scores from market data
+    const signals = [];
+    
+    // Ensure we have market data (use mock if needed)
+    const btc = marketData?.btc || getMockData('BTCUSDT');
+    const eth = marketData?.eth || getMockData('ETHUSDT');
+    
+    if (btc) {
+    const btcChange = parseFloat(btc.change24h) || 0;
     const btcChangePercent = btcChange * 100; // Convert to percentage
-    const btcPrice = parseFloat(marketData.btc.lastPr) || 0;
-    const btcVolume = parseFloat(marketData.btc.usdt24h) || 0;
-    const btcHigh = parseFloat(marketData.btc.high24h) || 0;
-    const btcLow = parseFloat(marketData.btc.low24h) || 0;
+    const btcPrice = parseFloat(btc.lastPr) || 0;
+    const btcVolume = parseFloat(btc.usdt24h) || 0;
+    const btcHigh = parseFloat(btc.high24h) || 0;
+    const btcLow = parseFloat(btc.low24h) || 0;
     
     // 1. Momentum Signal (12% weight)
     const momentumScore = btcChangePercent > 5 ? 80 : btcChangePercent > 2 ? 65 : btcChangePercent > 0 ? 55 : btcChangePercent > -2 ? 45 : btcChangePercent > -5 ? 35 : 20;
@@ -342,7 +347,7 @@ async function generateSignals() {
   const bearish = signals.filter(s => s.score < 40).length;
   
   // Generate AI reasoning
-  const aiReasoning = generateAIReasoning(signals, weightedScore, recommendation, marketData);
+  const aiReasoning = generateAIReasoning(signals, weightedScore, recommendation, { btc, eth });
   
   return {
     timestamp: Date.now(),
@@ -359,10 +364,25 @@ async function generateSignals() {
     },
     aiReasoning,
     marketData: {
-      btc: marketData.btc,
-      eth: marketData.eth
+      btc,
+      eth
     }
   };
+  } catch (error) {
+    console.error('[DASHBOARD] Error generating signals:', error);
+    // Return minimal valid response on error
+    return {
+      timestamp: Date.now(),
+      symbol: 'BTCUSDT',
+      totalScore: 50,
+      recommendation: 'HOLD',
+      confidence: 0.5,
+      signals: [],
+      summary: { bullish: 0, neutral: 0, bearish: 0, marketRegime: 'UNKNOWN' },
+      aiReasoning: { decision: 'HOLD', confidence: 50, summary: 'Error generating signals', keyPoints: [], rationale: 'Server error' },
+      marketData: { btc: getMockData('BTCUSDT'), eth: getMockData('ETHUSDT') }
+    };
+  }
 }
 
 // Create HTTP server
@@ -399,8 +419,9 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(signals));
     } catch (error) {
+      console.error('[DASHBOARD] Signals API error:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: error.message }));
+      res.end(JSON.stringify({ error: error.message, stack: error.stack }));
     }
     return;
   }
