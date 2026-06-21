@@ -603,22 +603,33 @@
         // Load data from API
         async function loadData() {
             try {
+                console.log('[DASHBOARD] Loading data...');
+                
                 // Fetch lifecycle data
                 const lifecycleRes = await fetch('/api/lifecycle');
                 const lifecycleData = await lifecycleRes.json();
                 bundles = lifecycleData.bundles || [];
+                console.log('[DASHBOARD] Lifecycle data:', bundles.length, 'bundles');
                 
                 // Fetch real-time signals
                 const signalsRes = await fetch('/api/signals');
                 const signalsData = await signalsRes.json();
+                console.log('[DASHBOARD] Signals data:', signalsData);
                 
                 // Fetch market data
                 const marketRes = await fetch('/api/market-data');
                 const marketData = await marketRes.json();
+                console.log('[DASHBOARD] Market data:', marketData);
                 
                 updateDashboard(signalsData, marketData);
             } catch (error) {
-                console.error('[DASHBOARD] Failed to load data:', error.message);
+                console.error('[DASHBOARD] Failed to load data:', error);
+                document.getElementById('signalFeed').innerHTML = `
+                    <div class="empty-state" style="color: #ff4444">
+                        <p>Error loading signals: ${error.message}</p>
+                        <p style="font-size: 0.8em; margin-top: 10px">Check browser console (F12) for details</p>
+                    </div>
+                `;
             }
         }
 
@@ -682,7 +693,10 @@
         function updateSignalFeed(signals = []) {
             const feed = document.getElementById('signalFeed');
             
+            console.log('[DASHBOARD] updateSignalFeed called with', signals?.length, 'signals');
+            
             if (!signals || signals.length === 0) {
+                console.log('[DASHBOARD] No signals to display');
                 feed.innerHTML = `
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="currentColor">
@@ -693,6 +707,8 @@
                 `;
                 return;
             }
+            
+            console.log('[DASHBOARD] Rendering', signals.length, 'signals');
             
             feed.innerHTML = signals.map(signal => {
                 const scoreClass = signal.score >= 60 ? 'high' : signal.score >= 40 ? 'medium' : 'low';
