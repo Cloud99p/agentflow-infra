@@ -1,32 +1,43 @@
 # 📸 Dashboard Screenshots
 
-Live dashboard screenshots from Full-Capability Demonstration Test (2026-06-20).
+**⚠️ STATUS:** Screenshots need to be captured and added to this folder.
 
-## Overview
+## Required Screenshots
 
-![Dashboard Overview](dashboard-overview.png)
+### 1. Dashboard Overview
+**Filename:** `dashboard-overview.png`
+**What to capture:**
+- Main dashboard view showing all 12 bundles
+- Success/failure indicators
+- Key metrics panel (Total: 12, Success: 5, Rate: 42%)
 
-**Key Metrics:**
-- **Total Bundles:** 12
-- **Success Rate:** 42% (5/12 finalized)
-- **Average Tip:** 6,175 lamports
-- **Network Health:** 50/100
+### 2. AI Decisions Panel
+**Filename:** `dashboard-ai-decisions.png`
+**What to capture:**
+- AI decision log showing RETRY/WAIT/ABORT decisions
+- Confidence scores for each decision
+- Reasoning text for failure analysis
 
-## AI Decisions Panel
+### 3. Performance Charts
+**Filename:** `dashboard-charts.png`
+**What to capture:**
+- Success rate over time graph
+- Tip efficiency chart (3,000 - 50,000 lamports range)
+- Latency distribution
 
-![AI Decisions](dashboard-ai-decisions.png)
+## Test Details
 
-**AI Analysis Examples:**
-- **RETRY** - double_spend failure (75% confidence)
-- **RETRY** - high_tip failure (85% confidence)
-- **WAIT_AND_RETRY** - network_delay failure (70% confidence)
-
-## Performance Charts
-
-![Charts](dashboard-charts.png)
-
-- **Success Rate Over Time:** Shows transition from normal bundles to failure scenarios
-- **Tip Efficiency:** Demonstrates dynamic tip adjustment (3,000 - 50,000 lamports)
+- **Date:** 2026-06-20
+- **Test Type:** Full-Capability Demonstration
+- **Network:** Solana Mainnet
+- **AI Model:** DeepSeek Chat
+- **Features Demonstrated:**
+  - ✅ Real Jito bundles
+  - ✅ DeepSeek AI failure analysis
+  - ✅ Hebbian Learning
+  - ✅ Knowledge Graph
+  - ✅ Cryptographic Proof Chain
+  - ✅ Ontology Self-Reflection
 
 ## Test Details
 
