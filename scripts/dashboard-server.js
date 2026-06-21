@@ -346,6 +346,8 @@ async function generateSignals() {
   const neutral = signals.filter(s => s.score >= 40 && s.score < 60).length;
   const bearish = signals.filter(s => s.score < 40).length;
   
+  console.log('[DASHBOARD] Generated', signals.length, 'signals:', signals.map(s => s.name));
+  
   // Generate AI reasoning
   const aiReasoning = generateAIReasoning(signals, weightedScore, recommendation, { btc, eth });
   
@@ -370,6 +372,7 @@ async function generateSignals() {
   };
   } catch (error) {
     console.error('[DASHBOARD] Error generating signals:', error);
+    console.error('[DASHBOARD] Stack trace:', error.stack);
     // Return minimal valid response on error
     return {
       timestamp: Date.now(),
@@ -379,7 +382,13 @@ async function generateSignals() {
       confidence: 0.5,
       signals: [],
       summary: { bullish: 0, neutral: 0, bearish: 0, marketRegime: 'UNKNOWN' },
-      aiReasoning: { decision: 'HOLD', confidence: 50, summary: 'Error generating signals', keyPoints: [], rationale: 'Server error' },
+      aiReasoning: { 
+        decision: 'HOLD', 
+        confidence: 50, 
+        summary: `Error: ${error.message}`, 
+        keyPoints: [error.stack], 
+        rationale: 'Server error - check terminal for details' 
+      },
       marketData: { btc: getMockData('BTCUSDT'), eth: getMockData('ETHUSDT') }
     };
   }
