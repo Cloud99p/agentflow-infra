@@ -136,9 +136,14 @@ function loadLifecycleData() {
 /**
  * Generate AI reasoning from signals
  */
-function generateAIReasoning(signals, totalScore, recommendation, marketData) {
+function generateAIReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish) {
   const bullishSignals = signals.filter(s => s.score >= 60);
   const bearishSignals = signals.filter(s => s.score < 40);
+  
+  // Use passed values or calculate fallback
+  bullish = bullish || bullishSignals.length;
+  neutral = neutral || signals.filter(s => s.score >= 40 && s.score < 60).length;
+  bearish = bearish || bearishSignals.length;
   
   const reasoning = {
     timestamp: Date.now(),
@@ -349,7 +354,7 @@ async function generateSignals() {
   console.log('[DASHBOARD] Generated', signals.length, 'signals:', signals.map(s => s.name));
   
   // Generate AI reasoning
-  const aiReasoning = generateAIReasoning(signals, weightedScore, recommendation, { btc, eth });
+  const aiReasoning = generateAIReasoning(signals, weightedScore, recommendation, { btc, eth }, bullish, neutral, bearish);
   
   return {
     timestamp: Date.now(),
