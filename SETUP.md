@@ -1,23 +1,128 @@
 # AgentFlow Infra - Setup Guide
 
-## Quick Start
+> Complete setup guide for new users. Get your trading dashboard running in under 5 minutes.
 
-### 1. Install Dependencies
+---
+
+## 🎯 What You're Building
+
+A production-grade trading analysis platform that:
+- Streams **real-time market data** from Bitget V2 API
+- Analyzes with **10 technical signals** (Momentum, RSI, MACD, etc.)
+- Provides **AI-powered reasoning** via DeepSeek
+- Tracks **portfolio performance** and backtesting
+- Updates **every 5 seconds** with live data
+
+**End Result**: A live trading dashboard with professional-grade analysis.
+
+---
+
+## ⏱️ Time Estimate
+
+| Step | Time | Prerequisites |
+|------|------|---------------|
+| 1. Install Node.js | 5 min | None |
+| 2. Clone & Install | 2 min | Git |
+| 3. Configure | 2 min | None |
+| 4. Run Dashboard | 1 min | None |
+| **Total** | **~10 min** | |
+
+---
+
+## Step 1: Install Prerequisites
+
+### Node.js (Required)
+
+**Windows:**
+1. Download from [nodejs.org](https://nodejs.org/)
+2. Choose **LTS version** (v20.x or higher)
+3. Run installer, accept defaults
+4. Verify: Open PowerShell, run `node --version`
+
+**macOS:**
+```bash
+# Using Homebrew
+brew install node@20
+
+# Or download from nodejs.org
+```
+
+**Linux:**
+```bash
+# Ubuntu/Debian
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify
+node --version  # Should be v20.x or higher
+npm --version   # Should be 8.x or higher
+```
+
+### Git (Required)
+
+**Windows:** Download from [git-scm.com](https://git-scm.com/)
+**macOS:** `xcode-select --install`
+**Linux:** `sudo apt install git`
+
+**Verify:**
+```bash
+git --version
+```
+
+---
+
+## Step 2: Clone & Install
+
+### Clone Repository
+
+```bash
+git clone https://github.com/Cloud99p/agentflow-infra.git
+cd agentflow-infra
+```
+
+### Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Configure Environment (Optional)
+**Expected output:**
+```
+added 119 packages in 6s
 
-**The dashboard works WITHOUT any API keys!** But for AI features:
+18 packages are looking for funding
+  run `npm fund` for details
+```
+
+**Troubleshooting:**
+
+If you see errors about native modules:
+
+```bash
+# Windows (PowerShell)
+Remove-Item -Recurse -Force node_modules
+Remove-Item -Force package-lock.json
+npm install --include=optional
+
+# macOS/Linux
+rm -rf node_modules package-lock.json
+npm install --include=optional
+```
+
+---
+
+## Step 3: Configure Environment
+
+### Copy Template
 
 ```bash
 cp .env.example .env
 nano .env  # Or use your preferred editor
 ```
 
-Edit `.env`:
+### Edit `.env`
+
+Open `.env` in your text editor. Here's what each line means:
 
 ```env
 # DeepSeek API for AI Reasoning (Recommended)
@@ -33,13 +138,48 @@ DEEPSEEK_CACHE_TTL=300000  # 5 minutes (default)
 DASHBOARD_PORT=3000
 ```
 
-### 3. Start Dashboard
+**For First-Time Testing (Recommended):**
+
+Just use the defaults - the dashboard works **without any API keys**! AI reasoning will use local fallback (still functional).
+
+---
+
+## Step 4: Run the Dashboard
+
+### Start Dashboard
 
 ```bash
 npm run dashboard
 ```
 
+**Expected output:**
+```
+===========================================
+  AGENTFLOW INFRA - DASHBOARD SERVER
+===========================================
+  Dashboard:  http://localhost:3000
+  API:        http://localhost:3000/api/signals
+  Market:     http://localhost:3000/api/market-data
+  Lifecycle:  http://localhost:3000/api/lifecycle
+===========================================
+  Real-time data from Bitget
+  10-signal engine (inspired by DCA Claw)
+  Auto-refresh every 5 seconds
+===========================================
+[CONFIG] DeepSeek AI: Disabled (no API key)
+[DASHBOARD] Fetching fresh market data from Bitget...
+```
+
+### Open in Browser
+
 Open **http://localhost:3000**
+
+You should see:
+- ✅ Real-time BTC/ETH/SOL/XRP prices
+- ✅ 10 technical signal cards
+- ✅ AI Reasoning panel (right side)
+- ✅ Portfolio & Backtest tabs
+- ✅ Charts updating every 5 seconds
 
 ---
 
@@ -290,6 +430,14 @@ A: Edit `scripts/dashboard-server.js` - add to `getMockData()` and `getMarketDat
 
 **Q: Dashboard not updating?**  
 A: Hard refresh with Ctrl+Shift+R. Check browser console (F12) for errors.
+
+**Q: Dashboard won't start?**  
+A: Check Node version (need 18+) and reinstall:
+```bash
+node --version  # Should be v18+
+rm -rf node_modules package-lock.json
+npm install
+```
 
 ---
 
