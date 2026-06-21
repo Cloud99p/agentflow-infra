@@ -500,14 +500,14 @@
                 </div>
             </div>
 
-            <div class="ai-decisions-panel">
-                <h3>🤖 AI Decisions</h3>
-                <div id="aiDecisions" class="ai-decisions-container">
+            <div class="ai-decisions-panel" style="max-width: 500px">
+                <h3>🤖 AI Reasoning</h3>
+                <div id="aiReasoning" class="ai-decisions-container">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
                         </svg>
-                        <p>No AI decisions yet</p>
+                        <p>Waiting for AI analysis...</p>
                     </div>
                 </div>
             </div>
@@ -638,6 +638,14 @@
                     document.getElementById('bearishSignals').textContent = signalsData.summary.bearish || 0;
                     document.getElementById('marketRegime').textContent = signalsData.summary.marketRegime || '-';
                 }
+                
+                // Update signal feed with the signals data
+                updateSignalFeed(signalsData.signals);
+                
+                // Update AI reasoning if available
+                if (signalsData.aiReasoning) {
+                    updateAIReasoning(signalsData.aiReasoning);
+                }
             }
             
             // Update with bundle data
@@ -657,9 +665,6 @@
                 tipChart.data.datasets[0].data = recentBundles.map(b => b.tip_amount || b.tipLamports || 0);
                 tipChart.update();
 
-                // Live feed
-                updateSignalFeed();
-
                 // AI Decisions
                 updateAiDecisions();
             }
@@ -674,52 +679,80 @@
         }
 
         // Update signal feed with real signals
-        async function updateSignalFeed() {
+        function updateSignalFeed(signals = []) {
             const feed = document.getElementById('signalFeed');
             
-            try {
-                // Fetch real signals from API
-                const response = await fetch('/api/signals');
-                const signalsData = await response.json();
-                const signals = signalsData.signals || [];
-                
-                if (signals.length === 0) {
-                    feed.innerHTML = `
-                        <div class="empty-state">
-                            <svg viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                            </svg>
-                            <p>No signals yet</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                feed.innerHTML = signals.map(signal => {
-                    const scoreClass = signal.score >= 60 ? 'high' : signal.score >= 40 ? 'medium' : 'low';
-                    const scoreColor = signal.score >= 60 ? '#00ff88' : signal.score >= 40 ? '#ffaa00' : '#ff4444';
-                    
-                    return `
-                        <div class="signal-card ${scoreClass}">
-                            <div class="signal-header">
-                                <span class="signal-name">${signal.name}</span>
-                                <span class="signal-score ${scoreClass}" style="color: ${scoreColor}">${signal.score.toFixed(0)}/100</span>
-                            </div>
-                            <div class="signal-rationale">
-                                <div>Weight: ${(signal.weight * 100).toFixed(0)}%</div>
-                                <div style="margin-top: 5px; font-style: italic; color: #aaa">${signal.rationale}</div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch (error) {
-                console.error('[DASHBOARD] Failed to load signals:', error.message);
+            if (!signals || signals.length === 0) {
                 feed.innerHTML = `
                     <div class="empty-state">
-                        <p style="color: #ff4444">Failed to load signals</p>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        <p>No signals yet</p>
                     </div>
                 `;
+                return;
             }
+            
+            feed.innerHTML = signals.map(signal => {
+                const scoreClass = signal.score >= 60 ? 'high' : signal.score >= 40 ? 'medium' : 'low';
+                const scoreColor = signal.score >= 60 ? '#00ff88' : signal.score >= 40 ? '#ffaa00' : '#ff4444';
+                
+                return `
+                    <div class="signal-card ${scoreClass}">
+                        <div class="signal-header">
+                            <span class="signal-name">${signal.name}</span>
+                            <span class="signal-score ${scoreClass}" style="color: ${scoreColor}">${signal.score.toFixed(0)}/100</span>
+                        </div>
+                        <div class="signal-rationale">
+                            <div style="font-size: 0.85em; color: #888">Weight: ${(signal.weight * 100).toFixed(0)}%</div>
+                            <div style="margin-top: 5px; font-style: italic; color: #aaa; font-size: 0.9em">${signal.rationale}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Update AI reasoning panel
+        function updateAIReasoning(reasoning) {
+            const container = document.getElementById('aiReasoning');
+            
+            if (!reasoning) {
+                container.innerHTML = '<p style="color: #888">No AI reasoning available</p>';
+                return;
+            }
+            
+            const actionIcon = reasoning.action?.includes('BUY') ? '🟢' : reasoning.action?.includes('SELL') ? '🔴' : '🟡';
+            const actionColor = reasoning.action?.includes('BUY') ? '#00ff88' : reasoning.action?.includes('SELL') ? '#ff4444' : '#ffaa00';
+            
+            container.innerHTML = `
+                <div style="margin-bottom: 20px">
+                    <div style="font-size: 0.85em; color: #888; margin-bottom: 5px">AI DECISION</div>
+                    <div style="font-size: 1.5em; font-weight: bold; color: ${actionColor}">
+                        ${actionIcon} ${reasoning.action || 'HOLD'}
+                    </div>
+                    <div style="color: #888; margin-top: 5px">Confidence: ${reasoning.confidence}%</div>
+                </div>
+                
+                <div style="margin-bottom: 20px">
+                    <div style="font-size: 0.85em; color: #888; margin-bottom: 5px">SUMMARY</div>
+                    <div style="color: #ccc; line-height: 1.5">${reasoning.summary || 'No summary available'}</div>
+                </div>
+                
+                <div style="margin-bottom: 20px">
+                    <div style="font-size: 0.85em; color: #888; margin-bottom: 5px">KEY POINTS</div>
+                    <ul style="color: #ccc; line-height: 1.8; padding-left: 20px">
+                        ${reasoning.keyPoints?.map(point => `<li>${point}</li>`).join('') || '<li>No key points</li>'}
+                    </ul>
+                </div>
+                
+                <div>
+                    <div style="font-size: 0.85em; color: #888; margin-bottom: 5px">RATIONALE</div>
+                    <div style="color: #aaa; font-style: italic; line-height: 1.5; font-size: 0.9em">
+                        ${reasoning.rationale || 'No rationale available'}
+                    </div>
+                </div>
+            `;
         }
 
         // Update AI decisions panel
