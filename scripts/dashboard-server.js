@@ -203,42 +203,72 @@ async function generateAIReasoning(signals, totalScore, recommendation, marketDa
   if (ENABLE_DEEPSEEK_AI && DEEPSEEK_API_KEY) {
     try {
       const cryptoData = marketData[Object.keys(marketData)[0]];
-      const reasoningRequest = {
-        symbol,
-        marketData: {
-          price: parseFloat(cryptoData?.lastPr || '0'),
-          change24h: parseFloat(cryptoData?.change24h || '0'),
-          high24h: parseFloat(cryptoData?.high24h || '0'),
-          low24h: parseFloat(cryptoData?.low24h || '0'),
-          volume: parseFloat(cryptoData?.usdt24h || '0')
+      const cryptoName = symbol.replace('USDT', '');
+      const cryptoChange = parseFloat(cryptoData?.change24h || '0') * 100;
+      
+      // Build prompt for DeepSeek
+      const signalsText = signals.map(s => `- ${s.name}: ${s.score}/100 - ${s.rationale}`).join('\n');
+      const prompt = `Analyze this ${cryptoName} trading opportunity:
+
+Price: $${parseFloat(cryptoData?.lastPr || '0').toLocaleString()} (${cryptoChange > 0 ? '+' : ''}${cryptoChange.toFixed(2)}%)
+24h High: $${parseFloat(cryptoData?.high24h || '0').toLocaleString()}
+24h Low: $${parseFloat(cryptoData?.low24h || '0').toLocaleString()}
+Volume: $${(parseFloat(cryptoData?.usdt24h || '0') / 1_000_000).toFixed(0)}M
+
+Signals:\n${signalsText}
+
+Overall Score: ${totalScore.toFixed(1)}/100
+Recommendation: ${recommendation}
+
+Provide a concise JSON response: {"decision":"BUY|HOLD|SELL","confidence":0-100,"summary":"one sentence","keyPoints":["point1","point2"],"rationale":"detailed explanation"}`;
+
+      // Call DeepSeek API directly
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
         },
-        signals: signals.map(s => ({
-          name: s.name,
-          score: s.score,
-          weight: s.weight,
-          rationale: s.rationale
-        })),
-        totalScore,
-        recommendation
-      };
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert crypto trading analyst. Provide concise, actionable insights in JSON format.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+
+      const data = await response.json();
       
-      // Import dynamically to avoid circular dependencies
-      const { getDeepSeekReasoning } = await import('../src/ai-reasoning-engine.ts');
-      const deepSeekReasoning = await getDeepSeekReasoning(reasoningRequest, DEEPSEEK_API_KEY);
-      
-      console.log('[DEEPSEEK] AI reasoning generated successfully');
-      
-      return {
-        timestamp: Date.now(),
-        decision: deepSeekReasoning.decision,
-        confidence: deepSeekReasoning.confidence,
-        summary: deepSeekReasoning.summary,
-        keyPoints: deepSeekReasoning.keyPoints,
-        action: deepSeekReasoning.decision,
-        rationale: deepSeekReasoning.rationale,
-        riskAssessment: deepSeekReasoning.riskAssessment,
-        actionPlan: deepSeekReasoning.actionPlan
-      };
+      if (data.choices && data.choices[0]) {
+        const content = data.choices[0].message.content;
+        // Try to parse JSON
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const deepSeekReasoning = JSON.parse(jsonMatch[0]);
+          console.log('[DEEPSEEK] AI reasoning generated successfully');
+          
+          return {
+            timestamp: Date.now(),
+            decision: deepSeekReasoning.decision || recommendation,
+            confidence: deepSeekReasoning.confidence || 80,
+            summary: deepSeekReasoning.summary || 'AI analysis complete',
+            keyPoints: deepSeekReasoning.keyPoints || ['Analysis provided by DeepSeek AI'],
+            action: deepSeekReasoning.decision || recommendation,
+            rationale: deepSeekReasoning.rationale || content,
+            riskAssessment: deepSeekReasoning.riskAssessment || 'Medium risk',
+            actionPlan: deepSeekReasoning.actionPlan || ['Monitor closely']
+          };
+        }
+      }
     } catch (error) {
       console.error('[DEEPSEEK] Failed to get AI reasoning, using fallback:', error.message);
     }
