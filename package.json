@@ -1,7 +1,7 @@
 {
-  "name": "solana-tx-stack",
+  "name": "agentflow-infra",
   "version": "1.0.0",
-  "description": "Solana Transaction Stack with Jito Bundle Support - Windows Compatible",
+  "description": "Trading Infrastructure for AI Agents with Bitget Agent Hub Integration",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "clean": "rm -rf dist",
     "lint": "eslint src/**/*.ts",
     "test": "vitest",
+    "test:bitget": "tsx scripts/test-bitget-integration.ts",
     "dashboard": "node scripts/dashboard-server.js",
     "dashboard:open": "node scripts/dashboard-server.js",
     "sync": "node scripts/sync-lifecycle.js",
@@ -30,6 +31,8 @@
     "@grpc/proto-loader": "^0.7.10",
     "@solana/web3.js": "^1.87.6",
     "@triton-one/yellowstone-grpc": "^4.0.2",
+    "bitget-client": "^1.0.0",
+    "bitget-skill-hub": "^1.0.0",
     "bs58": "^6.0.0",
     "dotenv": "^16.4.5",
     "jito-ts": "^4.0.0",

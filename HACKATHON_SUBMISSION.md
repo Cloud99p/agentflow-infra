@@ -76,27 +76,33 @@ Agent decides → AgentFlow executes → Trade confirmed → Learn from outcome
 
 ### Bitget Integration
 
-We integrated with Bitget's AI trading ecosystem:
+We integrated with Bitget's Agent Hub for market data and AI-powered analysis:
 
 | Bitget Tool | How We Use It | Status |
 |-------------|---------------|--------|
-| **Agent Hub** | Agent orchestration layer | ✅ Integrated |
-| **US Stocks API** | Market data for tokenized stocks | ✅ Integrated |
-| **Playbook** | Pre-built trading scenarios | 🔄 In Progress |
-| **MCP Server** | Deployment & scaling | 🔄 In Progress |
-| **Skill Hub** | Hebbian + KG modules | ✅ Integrated |
+| **bitget-client (bgc)** | Market data CLI for real-time prices | ✅ Integrated |
+| **Skill Hub** | 5 market analysis skills (macro, sentiment, technical, news, on-chain) | ✅ Integrated |
+| **MCP Server** | AI model integration via Model Context Protocol | ✅ Supported |
+| **Agent Hub** | Agent orchestration layer | ✅ Supported |
 
 **Example Integration:**
 ```typescript
-import { BitgetAgent } from '@bitget/agent-hub';
-import { AgentFlowExecutor } from 'agentflow-infra';
+import { bitget } from 'agentflow-infra';
 
-const agent = new BitgetAgent({ strategy: 'momentum' });
-const executor = new AgentFlowExecutor({ aiEnabled: true });
+// Get market data (no API key required)
+const marketData = await bitget.getMarketOverview();
+console.log(marketData.tickers['BTCUSDT']);
 
-const decision = await agent.analyze();
-const result = await executor.execute(decision);
-// result includes full audit trail with SHA-256 proofs
+// Run AI-powered sentiment analysis
+const sentiment = await bitget.runSkillAnalysis('sentiment-analyst', 'BTCUSDT');
+console.log(sentiment.analysis); // AI analysis
+console.log(sentiment.confidence); // 0.75 = 75% confidence
+```
+
+**Installation:**
+```bash
+npx bitget-hub upgrade-all --target claude
+npm run test:bitget  # Test integration
 ```
 
 ---
@@ -197,11 +203,10 @@ const result = await executor.execute(decision);
 - **SolInfra** - gRPC streaming (optional)
 
 #### Bitget Tools Used
-- ✅ **Agent Hub** - Agent orchestration layer
-- ✅ **US Stocks API** - Market data for tokenized stocks
-- 🔄 **Playbook** - Trading scenarios (in progress)
-- ✅ **Skill Hub** - Hebbian + KG modules integrated
-- 🔄 **MCP Server** - Deployment (in progress)
+- ✅ **bitget-client** - Market data CLI (bgc)
+- ✅ **Skill Hub** - 5 market analysis skills
+- ✅ **MCP Server** - AI model integration
+- ✅ **Agent Hub** - Agent orchestration
 
 ---
 

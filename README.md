@@ -103,43 +103,63 @@ npx tsx scripts/execute-trade.ts
 
 ---
 
-## 🛠️ Bitget Integration
+## 🛠️ Bitget Agent Hub Integration
 
-AgentFlow integrates with Bitget's AI trading ecosystem:
+AgentFlow integrates with Bitget's Agent Hub for market data and AI-powered analysis:
 
 | Bitget Tool | Integration | Status |
 |-------------|-------------|--------|
-| **Agent Hub** | Agent orchestration layer | ✅ Ready |
-| **US Stocks API** | Market data for tokenized stocks | ✅ Ready |
-| **Playbook** | Pre-built trading scenarios | 🔄 In Progress |
-| **MCP Server** | Deployment & scaling | 🔄 In Progress |
-| **Skill Hub** | Hebbian + KG modules | ✅ Ready |
+| **bitget-client (bgc)** | Market data CLI | ✅ Integrated |
+| **Skill Hub** | 5 market analysis skills | ✅ Integrated |
+| **MCP Server** | AI model integration | ✅ Supported |
+| **Agent Hub** | Agent orchestration | ✅ Supported |
 
-### Example: Bitget Agent + AgentFlow Infra
+### Installation
+
+```bash
+# Install Bitget Agent Hub packages
+npx bitget-hub upgrade-all --target claude
+
+# Or install individually
+npm install -g bitget-client
+npm install -g bitget-skill-hub
+
+# Configure API keys (optional for market data, required for trading)
+export BITGET_API_KEY="your-api-key"
+export BITGET_SECRET_KEY="your-secret-key"
+export BITGET_PASSPHRASE="your-passphrase"
+```
+
+### Available Skills
+
+| Skill | Description |
+|-------|-------------|
+| **macro-analyst** | Macro & cross-asset analysis (Fed policy, yield curve, BTC vs DXY/Nasdaq/Gold) |
+| **market-intel** | On-chain & institutional intelligence (ETF flows, whale activity, DeFi TVL) |
+| **sentiment-analyst** | Sentiment & positioning (Fear & Greed, long/short ratios, funding rates) |
+| **technical-analysis** | 23 technical indicators across 6 categories |
+| **news-briefing** | News aggregation & narrative synthesis |
+
+### Example: Market Data Integration
 
 ```typescript
-import { BitgetAgent } from '@bitget/agent-hub';
-import { AgentFlowExecutor } from 'agentflow-infra';
+import { bitget } from 'agentflow-infra';
 
-// Your trading agent (strategy)
-const agent = new BitgetAgent({
-  strategy: 'momentum',
-  symbols: ['BTCUSDT', 'ETHUSDT'],
-});
+// Get market overview
+const marketData = await bitget.getMarketOverview();
+console.log(marketData.tickers['BTCUSDT'].lastPr); // Current BTC price
 
-// AgentFlow handles execution (infrastructure)
-const executor = new AgentFlowExecutor({
-  aiEnabled: true,
-  auditTrail: true,
-  learning: true,
-});
+// Run sentiment analysis
+const sentiment = await bitget.runSkillAnalysis('sentiment-analyst', 'BTCUSDT');
+console.log(sentiment.analysis); // AI-powered sentiment analysis
+console.log(sentiment.confidence); // Confidence score (0-1)
+```
 
-// Agent decides, AgentFlow executes
-const decision = await agent.analyze();
-const result = await executor.execute(decision);
+### Test Integration
 
-// Result includes full audit trail
-console.log(result.proofChain); // SHA-256 hashed decision record
+```bash
+# Run Bitget integration test
+npm run test:bitget
 ```
 
 ---
