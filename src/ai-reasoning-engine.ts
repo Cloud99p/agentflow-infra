@@ -72,10 +72,10 @@ export async function getDeepSeekReasoning(
       })
     });
 
-    const data = await response.json();
+    const data: any = await response.json();
     
     if (data.choices && data.choices[0] && data.choices[0].message) {
-      const content = data.choices[0].message.content;
+      const content: string = data.choices[0].message.content;
       // Try to parse JSON from response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {

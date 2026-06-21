@@ -209,10 +209,10 @@ export class BitgetIntegration {
     try {
       // Use V2 API (V1 was decommissioned)
       const response = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${symbol}`);
-      const result = await response.json();
+      const result: any = await response.json();
       
       if (result.code === '00000' && result.data) {
-        const data = Array.isArray(result.data) ? result.data[0] : result.data;
+        const data: any = Array.isArray(result.data) ? result.data[0] : result.data;
         return {
           symbol: symbol,
           lastPr: String(data.close || data.lastPr || data.last || data.closePrice || '0'),
