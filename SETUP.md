@@ -191,6 +191,75 @@ npm install
 
 ---
 
+## 📋 Commands Reference
+
+### Dashboard
+
+```bash
+# Start dashboard
+npm run dashboard
+
+# Open in browser
+# http://localhost:3000
+```
+
+### Development
+
+```bash
+# Install dependencies
+npm install
+
+# Build TypeScript
+npm run build
+
+# Run tests
+npm test
+
+# Test Bitget integration
+npm run test:bitget
+```
+
+### Full Setup
+
+```bash
+# Dashboard with lifecycle sync
+npm run dashboard:full
+
+# Clean build
+npm run clean && npm run build
+```
+
+### Utilities
+
+```bash
+# Lint code
+npm run lint
+
+# Clean dist folder
+npm run clean
+```
+
+---
+
+## ❓ FAQ
+
+**Q: Do I need API keys?**  
+A: No! The dashboard works without any API keys. DeepSeek AI key is optional for enhanced AI analysis.
+
+**Q: How much does DeepSeek cost?**  
+A: With 5-minute caching, about $0.50-1/day. Without caching, $10-20/day.
+
+**Q: Can I use this for real trading?**  
+A: Currently uses mock data for portfolio/backtest. Real trading integration coming in Phase 2.
+
+**Q: How do I add more cryptos?**  
+A: Edit `scripts/dashboard-server.js` - add to `getMockData()` and `getMarketData()` functions.
+
+**Q: Dashboard not updating?**  
+A: Hard refresh with Ctrl+Shift+R. Check browser console (F12) for errors.
+
+---
+
 ## Next Steps
 
 1. **Configure DeepSeek API** for better AI analysis
@@ -202,3 +271,5 @@ npm install
 ---
 
 **Questions?** Check the main README.md or open an issue!
+
+**Happy Trading! 🚀**
