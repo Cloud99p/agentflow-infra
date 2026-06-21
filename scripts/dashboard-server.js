@@ -19,24 +19,23 @@ let marketDataCache = {
 };
 
 /**
- * Fetch real ticker data from Bitget public API
+ * Fetch real ticker data from Bitget public API V2
  */
 async function fetchBitgetTicker(symbol) {
   try {
-    const baseSymbol = symbol.replace('USDT', '');
-    const response = await fetch(`https://api.bitget.com/api/spot/v1/market/ticker?symbol=${baseSymbol}USDT`);
+    const response = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${symbol}`);
     const result = await response.json();
     
     if (result.code === '00000' && result.data) {
-      const data = result.data;
+      const data = Array.isArray(result.data) ? result.data[0] : result.data;
       return {
         symbol: symbol,
-        lastPr: data.close || data.lastPr || '0',
-        high24h: data.high24h || '0',
-        low24h: data.low24h || '0',
-        change24h: data.chg24h || data.change24h || '0',
-        vol24h: data.vol || data.vol24h || '0',
-        usdt24h: data.quoteVol || data.usdt24h || '0',
+        lastPr: String(data.close || data.lastPr || data.last || data.closePrice || '0'),
+        high24h: String(data.high24h || data.high || '0'),
+        low24h: String(data.low24h || data.low || '0'),
+        change24h: String(data.chg24h || data.change24h || data.change || data.changePercent || '0'),
+        vol24h: String(data.vol || data.vol24h || data.volume || '0'),
+        usdt24h: String(data.quoteVol || data.usdt24h || data.amount || data.turnover || '0'),
         timestamp: Date.now()
       };
     }
@@ -116,53 +115,57 @@ async function generateSignals() {
   
   if (marketData.btc) {
     const btcChange = parseFloat(marketData.btc.change24h) || 0;
+    const btcChangePercent = btcChange * 100; // Convert to percentage
     const btcPrice = parseFloat(marketData.btc.lastPr) || 0;
     
-    // Momentum Signal
+    // Momentum Signal (15% weight)
+    const momentumScore = btcChangePercent > 5 ? 80 : btcChangePercent > 2 ? 65 : btcChangePercent > 0 ? 55 : btcChangePercent > -2 ? 45 : btcChangePercent > -5 ? 35 : 20;
     signals.push({
       name: 'Momentum',
-      score: btcChange > 5 ? 80 : btcChange > 2 ? 65 : btcChange > 0 ? 55 : btcChange > -2 ? 45 : btcChange > -5 ? 35 : 20,
+      score: momentumScore,
       weight: 0.15,
-      rationale: `24h change: ${btcChange.toFixed(2)}%, price: $${btcPrice.toLocaleString()}`,
+      rationale: `24h change: ${btcChangePercent.toFixed(2)}%, price: $${btcPrice.toLocaleString()}`,
       timestamp: Date.now()
     });
     
-    // Volatility Signal
+    // Volatility Signal (10% weight)
     const btcHigh = parseFloat(marketData.btc.high24h) || 0;
     const btcLow = parseFloat(marketData.btc.low24h) || 0;
     const volatility = btcLow > 0 ? ((btcHigh - btcLow) / btcLow) * 100 : 0;
+    const volatilityScore = volatility > 3 && volatility < 10 ? 75 : volatility >= 10 && volatility < 15 ? 60 : volatility < 3 ? 40 : 30;
     signals.push({
       name: 'Volatility',
-      score: volatility > 3 && volatility < 10 ? 75 : volatility >= 10 && volatility < 15 ? 60 : volatility < 3 ? 40 : 30,
+      score: volatilityScore,
       weight: 0.10,
-      rationale: `24h volatility: ${volatility.toFixed(2)}%`,
+      rationale: `24h volatility: ${volatility.toFixed(2)}% (H: $${btcHigh.toLocaleString()}, L: $${btcLow.toLocaleString()})`,
       timestamp: Date.now()
     });
     
-    // Trend Signal
+    // Trend Signal (15% weight)
+    const trendScore = btcChangePercent > 3 ? 80 : btcChangePercent > 0 ? 60 : btcChangePercent > -3 ? 40 : 20;
     signals.push({
       name: 'Trend',
-      score: btcChange > 3 ? 80 : btcChange > 0 ? 60 : btcChange > -3 ? 40 : 20,
+      score: trendScore,
       weight: 0.15,
-      rationale: `Short-term trend: ${btcChange > 0 ? 'BULLISH' : 'BEARISH'} (${btcChange.toFixed(2)}%)`,
+      rationale: `Short-term trend: ${btcChangePercent > 0 ? 'BULLISH' : 'BEARISH'} (${btcChangePercent.toFixed(2)}%)`,
       timestamp: Date.now()
     });
     
-    // Market Regime Signal
+    // Market Regime Signal (10% weight)
     let regime = 'SIDEWAYS';
     let regimeScore = 50;
-    if (btcChange > 5) { regime = 'BULL'; regimeScore = 85; }
-    else if (btcChange > 2) { regime = 'BULL'; regimeScore = 70; }
-    else if (btcChange < -5) { regime = 'BEAR'; regimeScore = 15; }
-    else if (btcChange < -2) { regime = 'BEAR'; regimeScore = 30; }
+    if (btcChangePercent > 5) { regime = 'BULL'; regimeScore = 85; }
+    else if (btcChangePercent > 2) { regime = 'BULL'; regimeScore = 70; }
+    else if (btcChangePercent < -5) { regime = 'BEAR'; regimeScore = 15; }
+    else if (btcChangePercent < -2) { regime = 'BEAR'; regimeScore = 30; }
     
     signals.push({
       name: 'Market Regime',
       score: regimeScore,
       weight: 0.10,
-      rationale: `Market regime: ${regime} (${btcChange.toFixed(2)}%)`,
+      rationale: `Market regime: ${regime} (${btcChangePercent.toFixed(2)}%)`,
       timestamp: Date.now(),
-      data: { regime, change24h: btcChange }
+      data: { regime, change24h: btcChangePercent }
     });
   }
   
