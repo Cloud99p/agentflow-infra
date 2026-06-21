@@ -600,107 +600,126 @@
             });
         }
 
-        // Load data from lifecycle_log.json
-        function loadData() {
-            fetch('/lifecycle_log.json')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('HTTP ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Loaded lifecycle data:', data.bundles?.length || 0, 'bundles');
-                    bundles = data.bundles || [];
-                    updateDashboard();
-                })
-                .catch(error => {
-                    console.log('No lifecycle_log.json yet:', error.message);
-                });
+        // Load data from API
+        async function loadData() {
+            try {
+                // Fetch lifecycle data
+                const lifecycleRes = await fetch('/api/lifecycle');
+                const lifecycleData = await lifecycleRes.json();
+                bundles = lifecycleData.bundles || [];
+                
+                // Fetch real-time signals
+                const signalsRes = await fetch('/api/signals');
+                const signalsData = await signalsRes.json();
+                
+                // Fetch market data
+                const marketRes = await fetch('/api/market-data');
+                const marketData = await marketRes.json();
+                
+                updateDashboard(signalsData, marketData);
+            } catch (error) {
+                console.error('[DASHBOARD] Failed to load data:', error.message);
+            }
         }
 
         // Update dashboard
-        function updateDashboard() {
-            if (!bundles || bundles.length === 0) {
-                console.log('No bundles to display');
-                return;
+        function updateDashboard(signalsData = null, marketData = null) {
+            // Update stats with real signal data
+            if (signalsData) {
+                document.getElementById('totalSignals').textContent = signalsData.signals?.length || 0;
+                document.getElementById('overallScore').textContent = signalsData.totalScore?.toFixed(1) || '0';
+                document.getElementById('recommendation').textContent = signalsData.recommendation || '-';
+                document.getElementById('confidence').textContent = `Confidence: ${(signalsData.confidence * 100).toFixed(0)}%`;
+                
+                // Update signal summary
+                if (signalsData.summary) {
+                    document.getElementById('bullishSignals').textContent = signalsData.summary.bullish || 0;
+                    document.getElementById('neutralSignals').textContent = signalsData.summary.neutral || 0;
+                    document.getElementById('bearishSignals').textContent = signalsData.summary.bearish || 0;
+                    document.getElementById('marketRegime').textContent = signalsData.summary.marketRegime || '-';
+                }
             }
+            
+            // Update with bundle data
+            if (bundles && bundles.length > 0) {
+                document.getElementById('totalTrades').textContent = bundles.length;
+                
+                // Charts
+                const recentBundles = bundles.slice(-10);
+                signalChart.data.labels = recentBundles.map((_, i) => i + 1);
+                signalChart.data.datasets[0].data = recentBundles.map(b => {
+                    if (b.stages?.finalized || b.stages?.confirmed || b.status === 'finalized' || b.status === 'confirmed') return 100;
+                    return 50;
+                });
+                signalChart.update();
 
-            // Stats
-            const total = bundles.length;
-            const successful = bundles.filter(b => b.stages?.finalized || b.stages?.confirmed || b.status === 'finalized' || b.status === 'confirmed').length;
-            const successRate = total > 0 ? Math.round((successful / total) * 100) : 0;
-            const avgTip = bundles.reduce((sum, b) => sum + (b.tip_amount || b.tipLamports || 0), 0) / total;
+                tipChart.data.labels = recentBundles.map((_, i) => `Bundle ${i + 1}`);
+                tipChart.data.datasets[0].data = recentBundles.map(b => b.tip_amount || b.tipLamports || 0);
+                tipChart.update();
 
-            document.getElementById('totalSignals').textContent = bundles.length;
-            document.getElementById('totalTrades').textContent = bundles.length;
-            document.getElementById('recommendation').textContent = successRate > 50 ? 'BUY' : successRate > 30 ? 'HOLD' : 'SELL';
-            document.getElementById('recommendation').className = 'value ' + (successRate > 50 ? 'success' : successRate > 30 ? 'warning' : 'danger');
-            document.getElementById('confidence').textContent = `Success Rate: ${successRate}%`;
+                // Live feed
+                updateSignalFeed();
 
-            // Charts
-            const recentBundles = bundles.slice(-10);
-            signalChart.data.labels = recentBundles.map((_, i) => i + 1);
-            signalChart.data.datasets[0].data = recentBundles.map(b => {
-                if (b.stages?.finalized || b.stages?.confirmed || b.status === 'finalized' || b.status === 'confirmed') return 100;
-                return 50;
-            });
-            signalChart.update();
-
-            tipChart.data.labels = recentBundles.map((_, i) => `Bundle ${i + 1}`);
-            tipChart.data.datasets[0].data = recentBundles.map(b => b.tip_amount || b.tipLamports || 0);
-            tipChart.update();
-
-            // Live feed
-            updateSignalFeed();
-
-            // AI Decisions
-            updateAiDecisions();
+                // AI Decisions
+                updateAiDecisions();
+            }
+            
+            // Update market data display if available
+            if (marketData) {
+                console.log('[DASHBOARD] Market data:', marketData);
+            }
 
             // Update timestamp
             document.getElementById('lastUpdated').textContent = 'Last updated: Just now';
         }
 
-        // Update signal feed
-        function updateSignalFeed() {
+        // Update signal feed with real signals
+        async function updateSignalFeed() {
             const feed = document.getElementById('signalFeed');
             
-            if (bundles.length === 0) {
+            try {
+                // Fetch real signals from API
+                const response = await fetch('/api/signals');
+                const signalsData = await response.json();
+                const signals = signalsData.signals || [];
+                
+                if (signals.length === 0) {
+                    feed.innerHTML = `
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            <p>No signals yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                feed.innerHTML = signals.map(signal => {
+                    const scoreClass = signal.score >= 60 ? 'high' : signal.score >= 40 ? 'medium' : 'low';
+                    const scoreColor = signal.score >= 60 ? '#00ff88' : signal.score >= 40 ? '#ffaa00' : '#ff4444';
+                    
+                    return `
+                        <div class="signal-card ${scoreClass}">
+                            <div class="signal-header">
+                                <span class="signal-name">${signal.name}</span>
+                                <span class="signal-score ${scoreClass}" style="color: ${scoreColor}">${signal.score.toFixed(0)}/100</span>
+                            </div>
+                            <div class="signal-rationale">
+                                <div>Weight: ${(signal.weight * 100).toFixed(0)}%</div>
+                                <div style="margin-top: 5px; font-style: italic">${signal.rationale}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('[DASHBOARD] Failed to load signals:', error.message);
                 feed.innerHTML = `
                     <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                        </svg>
-                        <p>No signal scans yet</p>
+                        <p style="color: #ff4444">Failed to load signals</p>
                     </div>
                 `;
-                return;
             }
-
-            const recent = [...bundles].reverse().slice(0, 10);
-            
-            feed.innerHTML = recent.map(b => {
-                const isFinalized = b.stages?.finalized || b.status === 'finalized';
-                const isConfirmed = b.stages?.confirmed || b.status === 'confirmed';
-                const hasFailure = b.failure || b.failureType;
-                const bundleStatus = isFinalized ? 'finalized' : isConfirmed ? 'confirmed' : hasFailure ? 'failed' : 'pending';
-                const bundleClass = isFinalized || isConfirmed ? 'success' : hasFailure ? 'failed' : 'pending';
-                
-                return `
-                    <div class="signal-card ${bundleClass}">
-                        <div class="signal-header">
-                            <span class="signal-name">#${b.bundle_id || b.bundleId || 'N/A'}</span>
-                            <span class="signal-score ${bundleClass}">${bundleStatus.toUpperCase()}</span>
-                        </div>
-                        <div class="signal-rationale">
-                            <div>Slot: ${b.submission_slot || b.submittedSlot || 'N/A'}</div>
-                            <div>Tip: ${b.tip_amount || b.tipLamports || 0} lamports</div>
-                            ${b.failure?.type ? `<div style="color: #ff4444; margin-top: 5px">Error: ${b.failure.type}</div>` : ''}
-                            ${b.aiReasoning ? `<div style="color: #00d9ff; margin-top: 5px">AI: ${b.aiReasoning.substring(0, 80)}...</div>` : ''}
-                        </div>
-                    </div>
-                `;
-            }).join('');
         }
 
         // Update AI decisions panel
