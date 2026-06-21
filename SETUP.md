@@ -87,18 +87,24 @@ When you configure your DeepSeek API key, the dashboard will use advanced AI to 
 
 **With DeepSeek:** Gets professional-grade AI analysis
 
-### Bitget Testnet Trading
+### Bitget Demo Trading (Simulation Mode)
 
-When you enable Bitget testnet:
+**Note:** Bitget uses **Demo Trading** (simulation mode) instead of a separate testnet.
 
-- **Real trading simulation** with testnet funds
-- **Live order execution** on Bitget testnet
-- **Portfolio tracking** with real positions
-- **No real money at risk**
+When you use Bitget Demo Trading:
 
-**Without Testnet:** Uses public Bitget API for market data + mock portfolio
+- **Practice with virtual funds** (50,000 USDT provided)
+- **Real market conditions** - mirrors live prices
+- **Test strategies risk-free** - no real money involved
+- **Available by default** - no activation needed
 
-**With Testnet:** Full trading simulation with real API
+**How to Access:**
+- **Website:** Hover over "Futures" → Click "Demo Trading"
+- **App:** Futures → "..." icon → Demo Trading
+
+**Without Demo:** Uses public Bitget API for market data + mock portfolio
+
+**With Demo:** Full trading simulation with virtual funds
 
 ---
 
@@ -114,20 +120,47 @@ When you enable Bitget testnet:
 
 **Cost:** Very affordable (~$0.001-0.01 per analysis)
 
-### Bitget Testnet
+### Bitget Demo Trading & API
 
-1. Go to https://testnet.bitget.com/
-2. Sign up for testnet account
-3. Go to API Management
-4. Create API key with:
-   - Read permissions
-   - Trade permissions
-5. Copy credentials to `.env`:
-   - `BITGET_API_KEY`
-   - `BITGET_SECRET_KEY`
-   - `BITGET_PASSPHRASE`
+**Important:** Bitget doesn't have a separate testnet. They use **Demo Trading** (simulation mode).
 
-**Testnet Funds:** You'll get free test USDT to trade with
+**Option 1: Demo Trading (Recommended for Testing)**
+
+1. Go to https://www.bitget.com/
+2. Sign up for account
+3. **Access Demo Trading:**
+   - **Website:** Hover over "Futures" → Click "Demo Trading"
+   - **App:** Futures → "..." icon → Demo Trading
+4. **Virtual Funds:** 50,000 USDT provided automatically
+5. **Supported Pairs:**
+   - USDT-M: BTCUSDT, ETHUSDT, ADAUSDT, XRPUSDT, etc.
+   - Coin-M: BTCUSD, ETHUSD
+   - USDC-M: BTCPERP, ETPERP
+6. **No API keys needed** - Demo is available by default
+
+**Option 2: API Integration (For Development)**
+
+For API testing and integration:
+
+1. Go to https://www.bitget.com/
+2. Sign up and complete verification
+3. Go to **Profile** → **API Management**
+4. **Create API Key:**
+   - ✅ **Read** permissions (market data)
+   - ✅ **Trade** permissions (order testing)
+   - ❌ **Withdraw** permissions (NEVER enable!)
+5. **Copy to `.env`:**
+   ```env
+   BITGET_API_KEY=your-api-key
+   BITGET_SECRET_KEY=your-secret-key
+   BITGET_PASSPHRASE=your-passphrase
+   ```
+
+**⚠️ Safety Tips:**
+- Use Demo Trading for strategy testing (virtual funds)
+- Use small amounts for API testing on mainnet
+- Never enable withdraw permissions on API keys
+- Test thoroughly before using real funds
 
 ---
 
