@@ -171,9 +171,16 @@ function generateMockBacktest() {
     equityCurve
   };
 }
+
+/**
+ * Mock data fallback (used when API is unavailable)
+ */
+function getMockData(symbol) {
   const mockPrices = {
     'BTCUSDT': { price: 64000, change: 0.002, high: 64500, low: 63500, vol: 129000000 },
-    'ETHUSDT': { price: 1725, change: -0.003, high: 1750, low: 1715, vol: 80000000 }
+    'ETHUSDT': { price: 1725, change: -0.003, high: 1750, low: 1715, vol: 80000000 },
+    'SOLUSDT': { price: 138, change: 0.01, high: 142, low: 135, vol: 25000000 },
+    'XRPUSDT': { price: 0.52, change: -0.005, high: 0.54, low: 0.51, vol: 15000000 }
   };
   
   const mock = mockPrices[symbol] || mockPrices['BTCUSDT'];
