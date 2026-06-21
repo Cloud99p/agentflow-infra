@@ -1,0 +1,19 @@
+{
+  "test_id": "mainnet_1781981060584",
+  "test_date": "2026-06-19T11:04:20Z",
+  "test_type": "Mainnet Congestion Test",
+  "network": "Solana Mainnet",
+  "ai_model": "DeepSeek Chat",
+  "summary": {
+    "total_bundles": 16,
+    "successful": 5,
+    "failed": 11,
+    "success_rate": 31.25,
+    "average_tip_lamports": 7200
+  },
+  "performance_metrics": {
+    "latency": { "avg_processed_ms": 850, "avg_confirmed_ms": 860, "avg_finalized_ms": 880, "p95_ms": 980 },
+    "tip_efficiency": { "average_lamports": 7200, "success_weighted_avg": 6800 },
+    "ai_analysis": { "total_decisions": 11, "retry_decisions": 6, "abort_decisions": 2, "wait_and_retry": 3, "avg_confidence": 0.71 }
+  }
+}

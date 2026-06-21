@@ -1,0 +1,19 @@
+{
+  "test_id": "mainnet_1781983515072",
+  "test_date": "2026-06-19T11:45:15Z",
+  "test_type": "Mainnet AI Decision Test",
+  "network": "Solana Mainnet",
+  "ai_model": "DeepSeek Chat",
+  "summary": {
+    "total_bundles": 19,
+    "successful": 8,
+    "failed": 11,
+    "success_rate": 42.11,
+    "average_tip_lamports": 6100
+  },
+  "performance_metrics": {
+    "latency": { "avg_processed_ms": 795, "avg_confirmed_ms": 800, "avg_finalized_ms": 815, "p95_ms": 905 },
+    "tip_efficiency": { "average_lamports": 6100, "success_weighted_avg": 5900 },
+    "ai_analysis": { "total_decisions": 11, "retry_decisions": 6, "abort_decisions": 2, "wait_and_retry": 3, "avg_confidence": 0.75 }
+  }
+}

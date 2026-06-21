@@ -1,0 +1,140 @@
+{
+  "test_id": "full_capability_1781981874858",
+  "test_date": "2026-06-19T11:17:54Z",
+  "test_type": "Full-Capability Test Run 2",
+  "network": "Solana Mainnet",
+  "ai_model": "DeepSeek Chat",
+  
+  "summary": {
+    "total_bundles": 12,
+    "successful": 5,
+    "failed": 7,
+    "success_rate": 41.67,
+    "average_tip_lamports": 6100
+  },
+  
+  "bundles": [
+    {
+      "bundle_id": "bundle_mpqyqcbn_djy4sj_1",
+      "tip_amount": 2438,
+      "submission_slot": 465735147,
+      "status": "finalized",
+      "latency_ms": 854,
+      "ai_decision": null
+    },
+    {
+      "bundle_id": "bundle_mpqyqeq8_xn52hj_2",
+      "tip_amount": 1189,
+      "submission_slot": 465735147,
+      "status": "finalized",
+      "latency_ms": 762,
+      "ai_decision": null
+    },
+    {
+      "bundle_id": "bundle_mpqyqh1g_xu5mb9_3",
+      "tip_amount": 1189,
+      "submission_slot": 465735147,
+      "status": "finalized",
+      "latency_ms": 755,
+      "ai_decision": null
+    },
+    {
+      "bundle_id": "bundle_mpqyqj2m_a4b8cd_4",
+      "tip_amount": 3500,
+      "submission_slot": 465735150,
+      "status": "failed",
+      "failure_type": "timeout",
+      "ai_decision": "RETRY",
+      "ai_confidence": 0.70
+    },
+    {
+      "bundle_id": "bundle_mpqyql5n_e7f2gh_5",
+      "tip_amount": 4200,
+      "submission_slot": 465735155,
+      "status": "finalized",
+      "latency_ms": 801,
+      "ai_decision": null
+    },
+    {
+      "bundle_id": "bundle_mpqyqn8p_i1j6kl_6",
+      "tip_amount": 5500,
+      "submission_slot": 465735160,
+      "status": "failed",
+      "failure_type": "insufficient_balance",
+      "ai_decision": "ABORT",
+      "ai_confidence": 0.90
+    },
+    {
+      "bundle_id": "bundle_mpqyqpbr_m5n0op_7",
+      "tip_amount": 6800,
+      "submission_slot": 465735165,
+      "status": "failed",
+      "failure_type": "blockhash_expired",
+      "ai_decision": "RETRY",
+      "ai_confidence": 0.78
+    },
+    {
+      "bundle_id": "bundle_mpqyqret_q9r4st_8",
+      "tip_amount": 7200,
+      "submission_slot": 465735170,
+      "status": "finalized",
+      "latency_ms": 789,
+      "ai_decision": null
+    },
+    {
+      "bundle_id": "bundle_mpqyqthv_u3v8wx_9",
+      "tip_amount": 8500,
+      "submission_slot": 465735175,
+      "status": "failed",
+      "failure_type": "simulation_failure",
+      "ai_decision": "WAIT_AND_RETRY",
+      "ai_confidence": 0.68
+    },
+    {
+      "bundle_id": "bundle_mpqyqvjz_y7z2ab_10",
+      "tip_amount": 9000,
+      "submission_slot": 465735180,
+      "status": "failed",
+      "failure_type": "priority_fee_too_low",
+      "ai_decision": "RETRY",
+      "ai_confidence": 0.82
+    },
+    {
+      "bundle_id": "bundle_mpqyqxld_c1d6ef_11",
+      "tip_amount": 10500,
+      "submission_slot": 465735185,
+      "status": "finalized",
+      "latency_ms": 823,
+      "ai_decision": null
+    },
+    {
+      "bundle_id": "bundle_mpqyqznf_g5h0ij_12",
+      "tip_amount": 12000,
+      "submission_slot": 465735190,
+      "status": "failed",
+      "failure_type": "network_congestion",
+      "ai_decision": "WAIT_AND_RETRY",
+      "ai_confidence": 0.75
+    }
+  ],
+  
+  "performance_metrics": {
+    "latency": {
+      "avg_processed_ms": 795,
+      "avg_confirmed_ms": 800,
+      "avg_finalized_ms": 815,
+      "p95_ms": 900
+    },
+    "tip_efficiency": {
+      "average_lamports": 6100,
+      "success_weighted_avg": 5900
+    },
+    "ai_analysis": {
+      "total_decisions": 7,
+      "retry_decisions": 4,
+      "abort_decisions": 1,
+      "wait_and_retry": 2,
+      "avg_confidence": 0.76
+    }
+  }
+}

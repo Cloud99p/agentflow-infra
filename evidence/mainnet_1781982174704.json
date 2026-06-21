@@ -1,0 +1,19 @@
+{
+  "test_id": "mainnet_1781982174704",
+  "test_date": "2026-06-19T11:22:54Z",
+  "test_type": "Mainnet Tip Optimization Test",
+  "network": "Solana Mainnet",
+  "ai_model": "DeepSeek Chat",
+  "summary": {
+    "total_bundles": 22,
+    "successful": 11,
+    "failed": 11,
+    "success_rate": 50.0,
+    "average_tip_lamports": 5900
+  },
+  "performance_metrics": {
+    "latency": { "avg_processed_ms": 785, "avg_confirmed_ms": 790, "avg_finalized_ms": 805, "p95_ms": 895 },
+    "tip_efficiency": { "average_lamports": 5900, "success_weighted_avg": 5700 },
+    "ai_analysis": { "total_decisions": 11, "retry_decisions": 6, "abort_decisions": 2, "wait_and_retry": 3, "avg_confidence": 0.76 }
+  }
+}

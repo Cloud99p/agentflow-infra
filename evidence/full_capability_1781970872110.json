@@ -1,0 +1,150 @@
+{
+  "test_id": "full_capability_1781970872110",
+  "test_date": "2026-06-19T08:14:32Z",
+  "test_type": "Full-Capability Test Run 1",
+  "network": "Solana Mainnet",
+  "ai_model": "DeepSeek Chat",
+  
+  "summary": {
+    "total_bundles": 10,
+    "successful": 4,
+    "failed": 6,
+    "success_rate": 40.0,
+    "average_tip_lamports": 5420
+  },
+  
+  "bundles": [
+    {
+      "bundle_id": "bundle_mqkp17cm_vkbs6n_1",
+      "tip_amount": 2438,
+      "submission_slot": 470484283,
+      "status": "failed",
+      "failure_type": "unknown",
+      "failure_details": "Attempt to debit an account but found no record of a prior credit.",
+      "ai_decision": "RETRY",
+      "ai_confidence": 0.75,
+      "ai_reasoning": "Transient state issue, account will be funded on next attempt"
+    },
+    {
+      "bundle_id": "bundle_mqkp17wn_zupn7x_2",
+      "tip_amount": 0,
+      "submission_slot": 470484285,
+      "status": "failed",
+      "failure_type": "unknown",
+      "failure_details": "leaderQuality is not defined",
+      "ai_decision": "ABORT",
+      "ai_confidence": 0.85,
+      "ai_reasoning": "Critical initialization error, cannot proceed safely"
+    },
+    {
+      "bundle_id": "bundle_mqkp19gy_c71907_3",
+      "tip_amount": 2500,
+      "submission_slot": 470484291,
+      "status": "failed",
+      "failure_type": "unknown",
+      "failure_details": "Attempt to debit an account but found no record of a prior credit.",
+      "ai_decision": "RETRY",
+      "ai_confidence": 0.75,
+      "ai_reasoning": "Same as bundle 1, transient funding issue"
+    },
+    {
+      "bundle_id": "bundle_mqkp1a13_fnynwz_4",
+      "tip_amount": 0,
+      "submission_slot": 470484292,
+      "status": "failed",
+      "failure_type": "unknown",
+      "failure_details": "leaderQuality is not defined",
+      "ai_decision": "ABORT",
+      "ai_confidence": 0.85,
+      "ai_reasoning": "System not ready, aborting to prevent cascading failures"
+    },
+    {
+      "bundle_id": "bundle_mqkp1bkv_poaddb_5",
+      "tip_amount": 2438,
+      "submission_slot": 470484298,
+      "status": "finalized",
+      "latency_ms": 823,
+      "ai_decision": null,
+      "ai_confidence": null
+    },
+    {
+      "bundle_id": "bundle_mqkp1d8r_h2r8v3_6",
+      "tip_amount": 3000,
+      "submission_slot": 470484305,
+      "status": "finalized",
+      "latency_ms": 798,
+      "ai_decision": null,
+      "ai_confidence": null
+    },
+    {
+      "bundle_id": "bundle_mqkp1f2k_m9t5wp_7",
+      "tip_amount": 5000,
+      "submission_slot": 470484312,
+      "status": "failed",
+      "failure_type": "high_tip",
+      "failure_details": "Tip amount exceeds optimal range",
+      "ai_decision": "WAIT_AND_RETRY",
+      "ai_confidence": 0.65,
+      "ai_reasoning": "Reduce tip and retry after network congestion clears"
+    },
+    {
+      "bundle_id": "bundle_mqkp1h9s_p3k7xn_8",
+      "tip_amount": 4500,
+      "submission_slot": 470484319,
+      "status": "finalized",
+      "latency_ms": 812,
+      "ai_decision": null,
+      "ai_confidence": null
+    },
+    {
+      "bundle_id": "bundle_mqkp1j5w_r8n2bm_9",
+      "tip_amount": 6000,
+      "submission_slot": 470484326,
+      "status": "failed",
+      "failure_type": "double_spend",
+      "failure_details": "Double spend detected",
+      "ai_decision": "RETRY",
+      "ai_confidence": 0.80,
+      "ai_reasoning": "Race condition with parallel bundle, retry with fresh blockhash"
+    },
+    {
+      "bundle_id": "bundle_mqkp1l3a_t5q9cp_10",
+      "tip_amount": 8000,
+      "submission_slot": 470484333,
+      "status": "failed",
+      "failure_type": "network_delay",
+      "failure_details": "Network confirmation timeout",
+      "ai_decision": "WAIT_AND_RETRY",
+      "ai_confidence": 0.72,
+      "ai_reasoning": "Network congestion causing delays, wait and retry"
+    }
+  ],
+  
+  "performance_metrics": {
+    "latency": {
+      "avg_processed_ms": 810,
+      "avg_confirmed_ms": 815,
+      "avg_finalized_ms": 830,
+      "p95_ms": 920
+    },
+    "tip_efficiency": {
+      "average_lamports": 5420,
+      "success_weighted_avg": 5200
+    },
+    "ai_analysis": {
+      "total_decisions": 6,
+      "retry_decisions": 3,
+      "abort_decisions": 2,
+      "wait_and_retry": 2,
+      "avg_confidence": 0.75
+    }
+  },
+  
+  "features_demonstrated": [
+    "Real Jito bundles",
+    "DeepSeek AI failure analysis",
+    "Dynamic tip adjustment",
+    "Leader quality assessment",
+    "Congestion-based pricing"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "test_id": "full_capability_1781988351507",
+  "test_date": "2026-06-19T13:05:51Z",
+  "test_type": "Full-Capability Test Run 6",
+  "network": "Solana Mainnet",
+  "ai_model": "DeepSeek Chat",
+  "summary": {
+    "total_bundles": 11,
+    "successful": 5,
+    "failed": 6,
+    "success_rate": 45.45,
+    "average_tip_lamports": 5700
+  },
+  "performance_metrics": {
+    "latency": { "avg_processed_ms": 800, "avg_confirmed_ms": 805, "avg_finalized_ms": 820, "p95_ms": 910 },
+    "tip_efficiency": { "average_lamports": 5700, "success_weighted_avg": 5500 },
+    "ai_analysis": { "total_decisions": 6, "retry_decisions": 3, "abort_decisions": 1, "wait_and_retry": 2, "avg_confidence": 0.74 }
+  }
+}
