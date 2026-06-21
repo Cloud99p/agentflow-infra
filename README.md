@@ -1,54 +1,21 @@
 # AgentFlow Infra 🤖
 
-## Trading Infrastructure for Autonomous AI Agents
+## AI-Powered Trading Infrastructure with Real-Time Dashboard
 
-**Production-grade execution layer for AI trading agents** with real-time monitoring, cryptographic audit trails, and adaptive learning from outcomes.
-
----
-
-## 🎯 Why We Built This
-
-AI trading agents fail not because of bad strategies, but because of **bad infrastructure**:
-
-| Problem | AgentFlow Solution |
-|---------|-------------------|
-| ❌ Unreliable execution | ✅ Battle-tested execution layer (140+ trades proven) |
-| ❌ No audit trail | ✅ SHA-256 cryptographic proof chain for every decision |
-| ❌ No learning from failures | ✅ Hebbian learning + Knowledge Graph |
-| ❌ No real-time monitoring | ✅ Live dashboard with 4-stage lifecycle tracking |
-| ❌ Black box decisions | ✅ Transparent AI reasoning with confidence scoring |
-
-**AgentFlow separates "thinking" (agent strategy) from "doing" (execution infrastructure).**
+**Production-grade trading infrastructure** featuring a live dashboard, DeepSeek AI analysis, 10 technical signals, and Bitget integration. Built for the **Bitget AI Trading Hackathon S1**.
 
 ---
 
-## 🏗️ Core Architecture
+## 🎯 What It Is
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    AI Trading Agent                         │
-│  (Strategy, Signals, Alpha - YOUR CODE)                     │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  AgentFlow Infra                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │   AI Agent  │  │  Execution  │  │  Monitoring │         │
-│  │  (DeepSeek) │  │   Layer     │  │  Dashboard  │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │  Hebbian    │  │  Knowledge  │  │   Proof     │         │
-│  │  Learning   │  │   Graph     │  │   Chain     │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Exchanges / Markets                            │
-│  (Bitget, Solana, FTX, Binance, etc.)                       │
-└─────────────────────────────────────────────────────────────┘
-```
+AgentFlow Infra is a **comprehensive trading analysis platform** with:
+
+- 📊 **Live Dashboard** - Real-time market data, signals, and AI reasoning
+- 🤖 **DeepSeek AI Integration** - Professional-grade trading analysis
+- 📈 **10 Technical Signals** - Momentum, RSI, MACD, Volume, Volatility, and more
+- 💼 **Portfolio Tracking** - PnL, allocation, win rate metrics
+- 🔬 **Backtesting Engine** - Strategy performance analysis
+- 🌐 **Multi-Crypto Support** - BTC, ETH, SOL, XRP
 
 ---
 
@@ -62,112 +29,125 @@ cd agentflow-infra
 # Install
 npm install
 
-# Configure
+# Configure (optional - works without API keys!)
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your DeepSeek API key for AI features
 
-# Run dashboard
+# Run Dashboard
 npm run dashboard
 
-# Execute trade
-npx tsx scripts/execute-trade.ts
+# Open browser
+# http://localhost:3000
 ```
 
 ---
 
-## 📊 Features
+## 📊 Dashboard Features
 
-### 🎯 Multi-Signal Scoring Engine
-**Inspired by [DCA Claw](https://github.com/Argeneau12e/DCA_claw) by Samuel Oduntan (@Argeneau12e)**
-- **10 Independent Signals** - Momentum, volume, volatility, trend, S/R, sentiment, and more
-- **Weighted Scoring** - Configurable signal importance
-- **Plain-English Rationale** - Each signal explains its reasoning
-- **Bitget Skill Hub** - AI-powered sentiment analysis
+### **Real-Time Market Data**
+- ✅ **Bitget V2 API Integration** - Live prices, no API key needed
+- ✅ **Multi-Crypto Support** - BTC, ETH, SOL, XRP
+- ✅ **Auto-Refresh** - Updates every 5 seconds
+- ✅ **Price Display** - 24h change, high, low, volume
 
-### 🤖 AI-Powered Execution
-- **DeepSeek Integration** - Real-time AI analysis of trade failures
-- **Confidence Scoring** - AI confidence (0-1) for every decision
-- **Adaptive Retry Logic** - Smart retry with adjusted parameters
-- **Fallback Safety** - Local reasoning if AI unavailable
+### **10 Technical Signals** (Inspired by [DCA Claw](https://github.com/Argeneau12e/DCA_claw))
+**Credit: Samuel Oduntan (@Argeneau12e, @Little_Sam_1428)**
 
-### 🔐 Cryptographic Audit Trail
-- **SHA-256 Proof Chain** - Every decision is hashed and chained
-- **Tamper-Evident** - Any modification breaks the chain
-- **Compliance-Ready** - Full audit trail for regulators
-- **Post-Mortem Analysis** - Replay any decision with full context
+| Signal | Weight | Description |
+|--------|--------|-------------|
+| **Momentum** | 12% | 24h price momentum |
+| **Volatility** | 10% | Price volatility analysis |
+| **Trend** | 12% | Short-term trend direction |
+| **Volume** | 10% | Trading volume analysis |
+| **RSI** | 12% | Overbought/Oversold indicator |
+| **MACD** | 10% | Momentum convergence/divergence |
+| **Market Regime** | 10% | BULL/BEAR/SIDEWAYS detection |
+| **Support/Resistance** | 8% | Price position in 24h range |
+| **Sentiment** | 8% | Market sentiment analysis |
+| **Risk Assessment** | 8% | Overall risk level |
 
-### 🧠 Adaptive Learning
-- **Hebbian Optimization** - Neural weights adapt from outcomes
-- **Knowledge Graph** - Pattern recognition across trades
-- **Failure Taxonomy** - Ontology-based failure classification
-- **Self-Improvement** - System gets smarter with every trade
+### **AI Reasoning Panel**
+- 🤖 **DeepSeek AI Integration** - Professional trading analysis
+- 📝 **Detailed Rationale** - Why the AI recommends BUY/HOLD/SELL
+- 🎯 **Action Plan** - Specific steps to take
+- ⚠️ **Risk Assessment** - Risk level and factors
+- 💾 **Smart Caching** - Updates every 5 minutes (saves 95% on API costs!)
 
-### 📈 Real-Time Monitoring
-- **Live Dashboard** - Web UI with real-time trade status
-- **4-Stage Lifecycle** - submitted → processed → confirmed → finalized
-- **Success Rate Charts** - Performance over time
-- **Tip Efficiency** - Cost optimization tracking
+### **Portfolio Tracking**
+- 💰 **Total Value** - Portfolio worth
+- 📊 **PnL** - Realized + Unrealized
+- 🎯 **Win Rate** - Success rate
+- 📈 **Allocation** - Asset distribution
+- 📉 **Equity Curve** - Performance over time
+
+### **Backtesting View**
+- 🔬 **Strategy Testing** - Historical performance
+- 📊 **Metrics** - Sharpe ratio, max drawdown, profit factor
+- 📈 **Equity Curve** - Growth chart
+- 📋 **Trade History** - Individual trade analysis
 
 ---
 
-## 🛠️ Bitget Agent Hub Integration
+## 🏗️ Architecture
 
-AgentFlow integrates with Bitget's Agent Hub for market data and AI-powered analysis:
-
-| Bitget Tool | Integration | Status |
-|-------------|-------------|--------|
-| **bitget-client (bgc)** | Market data CLI | ✅ Integrated |
-| **Skill Hub** | 5 market analysis skills | ✅ Integrated |
-| **MCP Server** | AI model integration | ✅ Supported |
-| **Agent Hub** | Agent orchestration | ✅ Supported |
-
-### Installation
-
-```bash
-# Install Bitget Agent Hub packages
-npx bitget-hub upgrade-all --target claude
-
-# Or install individually
-npm install -g bitget-client
-npm install -g bitget-skill-hub
-
-# Configure API keys (optional for market data, required for trading)
-export BITGET_API_KEY="your-api-key"
-export BITGET_SECRET_KEY="your-secret-key"
-export BITGET_PASSPHRASE="your-passphrase"
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Dashboard UI                             │
+│  (React/HTML + Chart.js - Auto-refreshes every 5s)         │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│               Dashboard Server (Node.js)                    │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │   Signals   │  │    AI       │  │   Market    │         │
+│  │   Engine    │  │  Reasoning  │  │    Data     │         │
+│  │  (10 total) │  │  (DeepSeek) │  │  (Bitget)   │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│  ┌─────────────┐  ┌─────────────┐                          │
+│  │  Portfolio  │  │  Backtest   │                          │
+│  │  Tracker    │  │  Engine     │                          │
+│  └─────────────┘  └─────────────┘                          │
+└─────────────────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│              External APIs                                  │
+│  - Bitget V2 (Market Data)                                  │
+│  - DeepSeek (AI Analysis)                                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Available Skills
+---
 
-| Skill | Description |
-|-------|-------------|
-| **macro-analyst** | Macro & cross-asset analysis (Fed policy, yield curve, BTC vs DXY/Nasdaq/Gold) |
-| **market-intel** | On-chain & institutional intelligence (ETF flows, whale activity, DeFi TVL) |
-| **sentiment-analyst** | Sentiment & positioning (Fear & Greed, long/short ratios, funding rates) |
-| **technical-analysis** | 23 technical indicators across 6 categories |
-| **news-briefing** | News aggregation & narrative synthesis |
+## 🔧 Configuration
 
-### Example: Market Data Integration
+### Environment Variables (Optional)
 
-```typescript
-import { bitget } from 'agentflow-infra';
+Create `.env` file:
 
-// Get market overview
-const marketData = await bitget.getMarketOverview();
-console.log(marketData.tickers['BTCUSDT'].lastPr); // Current BTC price
+```env
+# DeepSeek API for AI Reasoning (Recommended)
+# Get key: https://platform.deepseek.com/
+DEEPSEEK_API_KEY=sk-your-key-here
+ENABLE_DEEPSEEK_AI=true
 
-// Run sentiment analysis
-const sentiment = await bitget.runSkillAnalysis('sentiment-analyst', 'BTCUSDT');
-console.log(sentiment.analysis); // AI-powered sentiment analysis
-console.log(sentiment.confidence); // Confidence score (0-1)
+# Dashboard Settings
+DASHBOARD_PORT=3000
+
+# AI Cache (saves credits!)
+# How long to cache AI reasoning before refreshing
+DEEPSEEK_CACHE_TTL=300000
 ```
 
-### Test Integration
+### Without API Keys
 
-```bash
-# Run Bitget integration test
-npm run test:bitget
-```
+The dashboard **works perfectly without any API keys**:
+- ✅ Market data from Bitget public API (free, no auth)
+- ✅ All 10 technical signals
+- ✅ Portfolio tracking (mock data)
+- ✅ Backtesting (mock data)
+- ⚠️ AI reasoning uses local fallback (still functional!)
 
 ---
 
@@ -175,106 +155,134 @@ npm run test:bitget
 
 ```
 agentflow-infra/
-├── src/
-│   ├── ai-agent.ts              # AI decision layer (DeepSeek)
-│   ├── executor.ts              # Trade execution engine
-│   ├── hebbian-optimizer.ts     # Neural learning
-│   ├── knowledge-graph.ts       # Pattern recognition
-│   ├── proof-chain.ts           # Cryptographic audit trail
-│   ├── dashboard-server.js      # Real-time monitoring
-│   └── index.ts                 # Main entry point
-├── scripts/
-│   ├── execute-trade.ts         # Single trade execution
-│   ├── test-scenarios.ts        # Test trading scenarios
-│   ├── export-audit.ts          # Export audit trail
-│   └── generate-report.ts       # Performance report
-├── dashboard/
-│   └── index.html               # Live monitoring UI
-├── evidence/                    # Trading records & logs
-├── audit_log.json               # Cryptographic proof chain
-├── .env.example                 # Configuration template
-└── README.md                    # This file
+├── dashboard/              # Dashboard HTML/CSS/JS
+│   └── index.html         # Main dashboard UI
+├── scripts/               # Server and utilities
+│   ├── dashboard-server.js    # Main dashboard server
+│   └── test-bitget-integration.ts
+├── src/                   # TypeScript source
+│   ├── ai-reasoning-engine.ts   # DeepSeek AI integration
+│   ├── backtest-engine.ts       # Backtesting logic
+│   ├── bitget-integration.ts    # Bitget API
+│   ├── portfolio-tracker.ts     # Portfolio tracking
+│   ├── signals/
+│   │   ├── signal-engine.ts     # 10-signal engine
+│   │   └── README.md
+│   └── technical-indicators.ts  # RSI, MACD, etc.
+├── evidence/              # Hackathon evidence
+│   ├── test-runs/         # Test run JSON files
+│   └── screenshots/       # Dashboard screenshots
+├── .env.example           # Environment template
+├── SETUP.md              # Setup guide
+└── package.json
 ```
 
 ---
 
-## 🧪 Testing
+## 🎓 Educational Features
 
+### **Learn Trading Analysis**
+- See how 10 different signals analyze the market
+- Understand weighted scoring systems
+- Learn AI reasoning patterns
+
+### **Learn Technical Indicators**
+- RSI (Relative Strength Index)
+- MACD (Moving Average Convergence Divergence)
+- Volatility analysis
+- Volume analysis
+
+### **Learn Risk Management**
+- Position sizing
+- Risk/reward ratios
+- Portfolio allocation
+- Drawdown control
+
+---
+
+## 🏆 Hackathon Submission
+
+**Built for:** Bitget AI Trading Hackathon S1
+
+**Key Features:**
+- ✅ Bitget V2 API integration (real-time market data)
+- ✅ 10-signal scoring engine (inspired by DCA Claw)
+- ✅ DeepSeek AI reasoning (professional analysis)
+- ✅ Live dashboard (auto-refresh every 5s)
+- ✅ Portfolio tracking
+- ✅ Backtesting engine
+- ✅ Multi-crypto support (BTC/ETH/SOL/XRP)
+
+**Evidence:** See `evidence/` folder for:
+- Test run JSON files (13+ runs)
+- Dashboard screenshots
+- Performance metrics
+
+---
+
+## 🚀 Usage Examples
+
+### Run Dashboard
 ```bash
-# Run test scenarios (paper trading)
-npx tsx scripts/test-scenarios.ts
-
-# Export audit trail
-npx tsx scripts/export-audit.ts
-
-# Generate performance report
-npx tsx scripts/generate-report.ts
+npm run dashboard
+# Open http://localhost:3000
 ```
 
-### Test Scenarios Include:
-- ✅ Normal execution (should succeed)
-- ✅ Network congestion (retry with higher gas)
-- ✅ Price slippage (adjust limit price)
-- ✅ Balance insufficient (abort & alert)
-- ✅ API rate limit (wait & retry)
+### Test Bitget Integration
+```bash
+npm run test:bitget
+```
+
+### Build TypeScript
+```bash
+npm run build
+```
+
+### Full Dashboard + Lifecycle Sync
+```bash
+npm run dashboard:full
+```
 
 ---
 
-## 📊 Performance Metrics
+## 💡 Tips
 
-| Metric | Value |
-|--------|-------|
-| **Total Trades Executed** | 140+ |
-| **Success Rate** | 50-60% (realistic market conditions) |
-| **AI Decisions** | 20+ with reasoning |
-| **Proof Chain Length** | 20+ cryptographic proofs |
-| **Avg Execution Latency** | <500ms |
-| **Dashboard Refresh** | 5 seconds |
+### **Dashboard Refresh**
+- Auto-refreshes every 5 seconds
+- Press `Ctrl+Shift+R` for hard refresh
+- Check browser console (F12) for logs
+
+### **AI Reasoning**
+- Updates every 5 minutes (cached to save credits)
+- Switch crypto (BTC/ETH/SOL/XRP) to get new analysis
+- Check terminal for `[DEEPSEEK]` logs
+
+### **Cost Optimization**
+- AI caching saves 95% on API costs
+- Default: 5-minute cache (~288 calls/day vs 17,280)
+- Adjust `DEEPSEEK_CACHE_TTL` in `.env`
 
 ---
 
-## 🔒 Security
+## 🤝 Credits
 
-- ✅ **Non-custodial** - Users retain API key control
-- ✅ **Encrypted storage** - API keys encrypted at rest
-- ✅ **Audit trail** - Every action is logged and hashed
-- ✅ **Rate limiting** - Built-in protection against API abuse
-- ✅ **Fail-safe** - Circuit breakers on abnormal conditions
-
-
-
-## 🤝 Contributing
-
-1. Fork the repo
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+- **Signal Engine:** Inspired by [DCA Claw](https://github.com/Argeneau12e/DCA_claw) by Samuel Oduntan (@Argeneau12e)
+- **AI Model:** DeepSeek Chat API
+- **Market Data:** Bitget V2 API
+- **Built with:** Node.js, TypeScript, Chart.js
 
 ---
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT - See LICENSE file
 
 ---
 
-## 📞 Support
+## 🆘 Support
 
-- **GitHub Issues:** https://github.com/Cloud99p/agentflow-infra/issues
-- **Documentation:** https://github.com/Cloud99p/agentflow-infra/wiki
-- **Twitter:** @Cloud99p
+- **Setup Guide:** See `SETUP.md`
+- **Issues:** Open GitHub issue
+- **Docs:** Check inline code comments
 
----
-
-## 🙏 Acknowledgments
-
-Built with:
-- **Bitget Agent Hub** - Agent orchestration
-- **Bitget US Stocks API** - Market data
-- **DeepSeek AI** - Language model for decision analysis
-- **Solana** - High-performance blockchain execution
-
----
-
-**AgentFlow Infra** - Because great agents need great infrastructure. 🤖
+**Happy Trading! 🚀**

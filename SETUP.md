@@ -10,31 +10,27 @@ npm install
 
 ### 2. Configure Environment (Optional)
 
-Copy the example environment file:
+**The dashboard works WITHOUT any API keys!** But for AI features:
 
 ```bash
 cp .env.example .env
+nano .env  # Or use your preferred editor
 ```
 
-Edit `.env` with your API keys:
+Edit `.env`:
 
-```bash
-# DeepSeek API for AI Reasoning (Optional but recommended)
+```env
+# DeepSeek API for AI Reasoning (Recommended)
 # Get your key at: https://platform.deepseek.com/
 DEEPSEEK_API_KEY=sk-your-deepseek-api-key-here
+ENABLE_DEEPSEEK_AI=true
 
-# Bitget Testnet API (Optional - for real trading tests)
-# Get your keys at: https://testnet.bitget.com/
-BITGET_API_KEY=your-bitget-testnet-api-key
-BITGET_SECRET_KEY=your-bitget-testnet-secret-key
-BITGET_PASSPHRASE=your-bitget-testnet-passphrase
+# AI Cache Settings (saves credits!)
+# How long to cache AI reasoning before refreshing
+DEEPSEEK_CACHE_TTL=300000  # 5 minutes (default)
 
 # Dashboard Configuration
 DASHBOARD_PORT=3000
-
-# Feature Flags
-ENABLE_DEEPSEEK_AI=true
-ENABLE_BITGET_TESTNET=false
 ```
 
 ### 3. Start Dashboard
@@ -43,7 +39,36 @@ ENABLE_BITGET_TESTNET=false
 npm run dashboard
 ```
 
-Open http://localhost:3000
+Open **http://localhost:3000**
+
+---
+
+## What Works Without API Keys
+
+✅ **Real-time Bitget market data** (BTC, ETH, SOL, XRP prices)
+✅ **All 10 technical signals** (Momentum, RSI, MACD, etc.)
+✅ **Portfolio tracking** (mock data for demo)
+✅ **Backtesting view** (mock data for demo)
+✅ **Dashboard auto-refresh** (every 5 seconds)
+✅ **Crypto selector** (switch between BTC/ETH/SOL/XRP)
+
+⚠️ **AI Reasoning** uses local fallback (still functional, just not DeepSeek-powered)
+
+---
+
+## What You Get WITH API Keys
+
+### DeepSeek API Key
+
+✅ **Professional AI analysis** - Expert trading insights
+✅ **Detailed rationale** - Why BUY/HOLD/SELL
+✅ **Action plans** - Specific steps to take
+✅ **Risk assessment** - Risk level and factors
+✅ **Smart caching** - Updates every 5 minutes (saves 95% on costs!)
+
+**Cost:** ~$0.50-1/day with caching (vs $10-20/day without)
+
+**Get your key:** https://platform.deepseek.com/
 
 ---
 
