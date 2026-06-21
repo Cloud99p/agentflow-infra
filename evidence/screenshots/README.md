@@ -8,7 +8,7 @@
 
 ## Available Screenshots
 
-### 1. Dashboard Overview
+### 1. [Dashboard Overview](https://github.com/Cloud99p/agentflow-infra/blob/main/evidence/screenshots/01-dashboard-overview.jpeg)
 **File:** `dashboard-overview.png`
 
 **What it shows:**
