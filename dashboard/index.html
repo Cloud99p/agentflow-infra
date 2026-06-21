@@ -808,10 +808,10 @@
                 bundles = lifecycleData.bundles || [];
                 console.log('[DASHBOARD] Lifecycle data:', bundles.length, 'bundles');
                 
-                // Fetch real-time signals
-                const signalsRes = await fetch('/api/signals');
+                // Fetch real-time signals (with active crypto symbol)
+                const signalsRes = await fetch(`/api/signals?symbol=${activeCrypto}`);
                 const signalsData = await signalsRes.json();
-                console.log('[DASHBOARD] Signals data:', signalsData);
+                console.log('[DASHBOARD] Signals data for', activeCrypto, ':', signalsData);
                 
                 // Fetch market data
                 const marketRes = await fetch('/api/market-data');

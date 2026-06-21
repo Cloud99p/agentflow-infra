@@ -321,7 +321,7 @@ function generateAIReasoning(signals, totalScore, recommendation, marketData, bu
 /**
  * Generate signal analysis from real market data
  */
-async function generateSignals() {
+async function generateSignals(activeSymbol = 'BTCUSDT') {
   try {
     const marketData = await getMarketData();
     const lifecycleData = loadLifecycleData();
@@ -333,113 +333,126 @@ async function generateSignals() {
     // Ensure we have market data (use mock if needed)
     const btc = marketData?.btc || getMockData('BTCUSDT');
     const eth = marketData?.eth || getMockData('ETHUSDT');
+    const sol = marketData?.sol || getMockData('SOLUSDT');
+    const xrp = marketData?.xrp || getMockData('XRPUSDT');
     
-    if (btc) {
-    const btcChange = parseFloat(btc.change24h) || 0;
-    const btcChangePercent = btcChange * 100; // Convert to percentage
-    const btcPrice = parseFloat(btc.lastPr) || 0;
-    const btcVolume = parseFloat(btc.usdt24h) || 0;
-    const btcHigh = parseFloat(btc.high24h) || 0;
-    const btcLow = parseFloat(btc.low24h) || 0;
+    // Get the active crypto data based on symbol
+    const activeCrypto = activeSymbol || 'BTCUSDT';
+    const cryptoData = {
+      'BTCUSDT': btc,
+      'ETHUSDT': eth,
+      'SOLUSDT': sol,
+      'XRPUSDT': xrp
+    }[activeCrypto] || btc;
+    
+    if (cryptoData) {
+    const cryptoChange = parseFloat(cryptoData.change24h) || 0;
+    const cryptoChangePercent = cryptoChange * 100; // Convert to percentage
+    const cryptoPrice = parseFloat(cryptoData.lastPr) || 0;
+    const cryptoVolume = parseFloat(cryptoData.usdt24h) || 0;
+    const cryptoHigh = parseFloat(cryptoData.high24h) || 0;
+    const cryptoLow = parseFloat(cryptoData.low24h) || 0;
+    
+    const cryptoName = activeCrypto.replace('USDT', '');
     
     // 1. Momentum Signal (12% weight)
-    const momentumScore = btcChangePercent > 5 ? 80 : btcChangePercent > 2 ? 65 : btcChangePercent > 0 ? 55 : btcChangePercent > -2 ? 45 : btcChangePercent > -5 ? 35 : 20;
+    const momentumScore = cryptoChangePercent > 5 ? 80 : cryptoChangePercent > 2 ? 65 : cryptoChangePercent > 0 ? 55 : cryptoChangePercent > -2 ? 45 : cryptoChangePercent > -5 ? 35 : 20;
     signals.push({
       name: 'Momentum',
       score: momentumScore,
       weight: 0.12,
-      rationale: `24h change: ${btcChangePercent.toFixed(2)}%, price: $${btcPrice.toLocaleString()}`,
+      rationale: `${cryptoName} 24h change: ${cryptoChangePercent.toFixed(2)}%, price: $${cryptoPrice.toLocaleString()}`,
       timestamp: Date.now()
     });
     
     // 2. Volatility Signal (10% weight)
-    const volatility = btcLow > 0 ? ((btcHigh - btcLow) / btcLow) * 100 : 0;
+    const volatility = cryptoLow > 0 ? ((cryptoHigh - cryptoLow) / cryptoLow) * 100 : 0;
     const volatilityScore = volatility > 3 && volatility < 10 ? 75 : volatility >= 10 && volatility < 15 ? 60 : volatility < 3 ? 40 : 30;
     signals.push({
       name: 'Volatility',
       score: volatilityScore,
       weight: 0.10,
-      rationale: `24h volatility: ${volatility.toFixed(2)}% (H: $${btcHigh.toLocaleString()}, L: $${btcLow.toLocaleString()})`,
+      rationale: `${cryptoName} 24h volatility: ${volatility.toFixed(2)}% (H: $${cryptoHigh.toLocaleString()}, L: $${cryptoLow.toLocaleString()})`,
       timestamp: Date.now()
     });
     
     // 3. Trend Signal (12% weight)
-    const trendScore = btcChangePercent > 3 ? 80 : btcChangePercent > 0 ? 60 : btcChangePercent > -3 ? 40 : 20;
+    const trendScore = cryptoChangePercent > 3 ? 80 : cryptoChangePercent > 0 ? 60 : cryptoChangePercent > -3 ? 40 : 20;
     signals.push({
       name: 'Trend',
       score: trendScore,
       weight: 0.12,
-      rationale: `Short-term trend: ${btcChangePercent > 0 ? 'BULLISH' : 'BEARISH'} (${btcChangePercent.toFixed(2)}%)`,
+      rationale: `${cryptoName} short-term trend: ${cryptoChangePercent > 0 ? 'BULLISH' : 'BEARISH'} (${cryptoChangePercent.toFixed(2)}%)`,
       timestamp: Date.now()
     });
     
     // 4. Volume Analysis Signal (10% weight)
-    const volumeScore = btcVolume > 1_000_000_000 ? 85 : btcVolume > 100_000_000 ? 70 : btcVolume > 10_000_000 ? 55 : 35;
+    const volumeScore = cryptoVolume > 1_000_000_000 ? 85 : cryptoVolume > 100_000_000 ? 70 : cryptoVolume > 10_000_000 ? 55 : 35;
     signals.push({
       name: 'Volume',
       score: volumeScore,
       weight: 0.10,
-      rationale: `24h volume: $${(btcVolume / 1_000_000).toFixed(0)}M`,
+      rationale: `${cryptoName} 24h volume: $${(cryptoVolume / 1_000_000).toFixed(0)}M`,
       timestamp: Date.now()
     });
     
     // 5. RSI Signal (12% weight) - Simulated (would need historical data for real RSI)
-    const simulatedRSI = 50 + (btcChangePercent * 2); // Simplified simulation
+    const simulatedRSI = 50 + (cryptoChangePercent * 2); // Simplified simulation
     const rsiScore = simulatedRSI < 20 ? 85 : simulatedRSI < 30 ? 70 : simulatedRSI < 45 ? 55 : simulatedRSI < 55 ? 50 : simulatedRSI < 65 ? 45 : simulatedRSI < 75 ? 30 : 15;
     signals.push({
       name: 'RSI',
       score: Math.max(0, Math.min(100, rsiScore)),
       weight: 0.12,
-      rationale: `RSI: ${Math.max(0, Math.min(100, simulatedRSI)).toFixed(1)} (Simulated)`,
+      rationale: `${cryptoName} RSI: ${Math.max(0, Math.min(100, simulatedRSI)).toFixed(1)} (Simulated)`,
       timestamp: Date.now()
     });
     
     // 6. MACD Signal (10% weight) - Simulated
-    const macdHistogram = btcChangePercent * 0.5; // Simplified simulation
+    const macdHistogram = cryptoChangePercent * 0.5; // Simplified simulation
     const macdScore = macdHistogram > 0 ? 70 : macdHistogram > -1 ? 50 : 30;
     signals.push({
       name: 'MACD',
       score: macdScore,
       weight: 0.10,
-      rationale: `MACD Histogram: ${macdHistogram.toFixed(2)} (${macdHistogram > 0 ? 'Bullish' : 'Bearish'})`,
+      rationale: `${cryptoName} MACD Histogram: ${macdHistogram.toFixed(2)} (${macdHistogram > 0 ? 'Bullish' : 'Bearish'})`,
       timestamp: Date.now()
     });
     
     // 7. Market Regime Signal (10% weight)
     let regime = 'SIDEWAYS';
     let regimeScore = 50;
-    if (btcChangePercent > 5) { regime = 'BULL'; regimeScore = 85; }
-    else if (btcChangePercent > 2) { regime = 'BULL'; regimeScore = 70; }
-    else if (btcChangePercent < -5) { regime = 'BEAR'; regimeScore = 15; }
-    else if (btcChangePercent < -2) { regime = 'BEAR'; regimeScore = 30; }
+    if (cryptoChangePercent > 5) { regime = 'BULL'; regimeScore = 85; }
+    else if (cryptoChangePercent > 2) { regime = 'BULL'; regimeScore = 70; }
+    else if (cryptoChangePercent < -5) { regime = 'BEAR'; regimeScore = 15; }
+    else if (cryptoChangePercent < -2) { regime = 'BEAR'; regimeScore = 30; }
     
     signals.push({
       name: 'Market Regime',
       score: regimeScore,
       weight: 0.10,
-      rationale: `Market regime: ${regime} (${btcChangePercent.toFixed(2)}%)`,
+      rationale: `${cryptoName} market regime: ${regime} (${cryptoChangePercent.toFixed(2)}%)`,
       timestamp: Date.now(),
-      data: { regime, change24h: btcChangePercent }
+      data: { regime, change24h: cryptoChangePercent }
     });
     
     // 8. Support/Resistance Signal (8% weight)
-    const rangePosition = ((btcPrice - btcLow) / (btcHigh - btcLow)) * 100;
+    const rangePosition = ((cryptoPrice - cryptoLow) / (cryptoHigh - cryptoLow)) * 100;
     const srScore = 100 - rangePosition;
     signals.push({
       name: 'Support/Resistance',
       score: Math.max(0, Math.min(100, srScore)),
       weight: 0.08,
-      rationale: `Price position: ${rangePosition.toFixed(1)}% of 24h range (${rangePosition > 50 ? 'Near Resistance' : 'Near Support'})`,
+      rationale: `${cryptoName} price position: ${rangePosition.toFixed(1)}% of 24h range (${rangePosition > 50 ? 'Near Resistance' : 'Near Support'})`,
       timestamp: Date.now()
     });
     
     // 9. Sentiment Signal (8% weight) - Simulated
-    const sentimentScore = btcChangePercent > 0 ? 60 + Math.min(20, btcChangePercent * 2) : 40 - Math.min(20, Math.abs(btcChangePercent) * 2);
+    const sentimentScore = cryptoChangePercent > 0 ? 60 + Math.min(20, cryptoChangePercent * 2) : 40 - Math.min(20, Math.abs(cryptoChangePercent) * 2);
     signals.push({
       name: 'Sentiment',
       score: Math.max(0, Math.min(100, sentimentScore)),
       weight: 0.08,
-      rationale: `Market sentiment: ${sentimentScore > 60 ? 'Bullish' : sentimentScore > 40 ? 'Neutral' : 'Bearish'}`,
+      rationale: `${cryptoName} market sentiment: ${sentimentScore > 60 ? 'Bullish' : sentimentScore > 40 ? 'Neutral' : 'Bearish'}`,
       timestamp: Date.now()
     });
     
@@ -449,7 +462,7 @@ async function generateSignals() {
       name: 'Risk Assessment',
       score: riskScore,
       weight: 0.08,
-      rationale: `Risk level: ${riskScore > 70 ? 'LOW' : riskScore > 40 ? 'MEDIUM' : 'HIGH'} (vol: ${volatility.toFixed(2)}%)`,
+      rationale: `${cryptoName} risk level: ${riskScore > 70 ? 'LOW' : riskScore > 40 ? 'MEDIUM' : 'HIGH'} (vol: ${volatility.toFixed(2)}%)`,
       timestamp: Date.now()
     });
   }
@@ -476,11 +489,11 @@ async function generateSignals() {
   console.log('[DASHBOARD] Generated', signals.length, 'signals:', signals.map(s => s.name));
   
   // Generate AI reasoning
-  const aiReasoning = generateAIReasoning(signals, weightedScore, recommendation, { btc, eth }, bullish, neutral, bearish);
+  const aiReasoning = generateAIReasoning(signals, weightedScore, recommendation, { [activeCrypto.toLowerCase().replace('usdt', '')]: cryptoData }, bullish, neutral, bearish);
   
   return {
     timestamp: Date.now(),
-    symbol: 'BTCUSDT',
+    symbol: activeCrypto,
     totalScore: Math.round(weightedScore * 100) / 100,
     recommendation,
     confidence: Math.min(1, signals.length / 10),
@@ -494,7 +507,9 @@ async function generateSignals() {
     aiReasoning,
     marketData: {
       btc,
-      eth
+      eth,
+      sol,
+      xrp
     }
   };
   } catch (error) {
@@ -551,7 +566,10 @@ const server = http.createServer(async (req, res) => {
   
   if (url.pathname === '/api/signals') {
     try {
-      const signals = await generateSignals();
+      // Get crypto symbol from query parameter
+      const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+      const symbol = urlObj.searchParams.get('symbol') || 'BTCUSDT';
+      const signals = await generateSignals(symbol);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(signals));
     } catch (error) {
