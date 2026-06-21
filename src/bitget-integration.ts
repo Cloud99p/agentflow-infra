@@ -61,6 +61,14 @@ export class BitgetIntegration {
       return data;
     } catch (error) {
       console.error('[BITGET] Failed to fetch ticker:', error);
+      
+      // Fallback: Use Bitget public API directly
+      const fallbackData = await this.fetchFromPublicAPI(symbol);
+      if (fallbackData) {
+        this.cache.set(cacheKey, { data: fallbackData, timestamp: Date.now() });
+        return fallbackData;
+      }
+      
       throw new Error(`Bitget API error: ${error}`);
     }
   }
@@ -199,6 +207,34 @@ export class BitgetIntegration {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Fetch from Bitget public API (fallback when bgc CLI unavailable)
+   */
+  private async fetchFromPublicAPI(symbol: string): Promise<BitgetTicker | null> {
+    try {
+      const baseSymbol = symbol.replace('USDT', '');
+      const response = await fetch(`https://api.bitget.com/api/spot/v1/market/ticker?symbol=${baseSymbol}USDT`);
+      const result = await response.json();
+      
+      if (result.code === '00000' && result.data) {
+        const data = result.data;
+        return {
+          symbol: symbol,
+          lastPr: data.close || data.lastPr || '0',
+          high24h: data.high24h || '0',
+          low24h: data.low24h || '0',
+          change24h: data.chg24h || data.change24h || '0',
+          vol24h: data.vol || data.vol24h || '0',
+          usdt24h: data.quoteVol || data.usdt24h || '0',
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('[BITGET] Public API fallback failed:', error);
+      return null;
     }
   }
 

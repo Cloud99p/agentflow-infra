@@ -32,18 +32,19 @@ async function main() {
   // Test market data
   console.log('[2] Fetching market data from Bitget...');
   try {
-    const marketData = await bitget.getMarketOverview();
+    const btcTicker = await bitget.getTicker('BTCUSDT');
     console.log('✅ Market data retrieved');
     console.log();
-    console.log('Market Overview:');
-    console.log('-'.repeat(60));
-    Object.entries(marketData.tickers).forEach(([symbol, ticker]) => {
-      console.log(`${symbol.padEnd(10)} | Price: $${ticker.lastPr.padEnd(12)} | 24h: ${ticker.change24h.padEnd(8)} | Vol: ${parseFloat(ticker.usdt24h).toLocaleString(undefined, { maximumFractionDigits: 0 })} USDT`);
-    });
-    console.log('-'.repeat(60));
+    console.log('BTC/USDT:');
+    console.log(`  Price:      $${btcTicker.lastPr}`);
+    console.log(`  24h High:   $${btcTicker.high24h}`);
+    console.log(`  24h Low:    $${btcTicker.low24h}`);
+    console.log(`  24h Change: ${btcTicker.change24h}`);
+    console.log(`  24h Volume: ${parseFloat(btcTicker.usdt24h || '0').toLocaleString(undefined, { maximumFractionDigits: 0 })} USDT`);
     console.log();
   } catch (error) {
-    console.log('⚠️  Market data fetch failed (expected if bgc not installed)');
+    console.log('⚠️  Market data fetch failed');
+    console.log(`   Error: ${error}`);
     console.log();
   }
 
@@ -58,21 +59,22 @@ async function main() {
   console.log('  - news-briefing: News aggregation & synthesis');
   console.log();
 
-  // Test individual ticker
-  console.log('[4] Fetching BTC/USDT ticker...');
+  // Test ETH ticker
+  console.log('[4] Fetching ETH/USDT ticker...');
   try {
-    const btcTicker = await bitget.getTicker('BTCUSDT');
-    console.log('✅ BTC/USDT retrieved');
+    const ethTicker = await bitget.getTicker('ETHUSDT');
+    console.log('✅ ETH/USDT retrieved');
     console.log();
-    console.log('BTC/USDT:');
-    console.log(`  Price:      $${btcTicker.lastPr}`);
-    console.log(`  24h High:   $${btcTicker.high24h}`);
-    console.log(`  24h Low:    $${btcTicker.low24h}`);
-    console.log(`  24h Change: ${btcTicker.change24h}`);
-    console.log(`  24h Volume: ${parseFloat(btcTicker.usdt24h).toLocaleString(undefined, { maximumFractionDigits: 0 })} USDT`);
+    console.log('ETH/USDT:');
+    console.log(`  Price:      $${ethTicker.lastPr}`);
+    console.log(`  24h High:   $${ethTicker.high24h}`);
+    console.log(`  24h Low:    $${ethTicker.low24h}`);
+    console.log(`  24h Change: ${ethTicker.change24h}`);
+    console.log(`  24h Volume: ${parseFloat(ethTicker.usdt24h || '0').toLocaleString(undefined, { maximumFractionDigits: 0 })} USDT`);
     console.log();
   } catch (error) {
-    console.log('⚠️  Ticker fetch failed (expected if bgc not installed)');
+    console.log('⚠️  ETH ticker fetch failed');
+    console.log(`   Error: ${error}`);
     console.log();
   }
 
