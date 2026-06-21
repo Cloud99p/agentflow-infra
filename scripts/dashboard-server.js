@@ -13,6 +13,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.DASHBOARD_PORT || 3000;
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const ENABLE_DEEPSEEK_AI = process.env.ENABLE_DEEPSEEK_AI !== 'false';
+const ENABLE_BITGET_TESTNET = process.env.ENABLE_BITGET_TESTNET === 'true';
+
+console.log('[CONFIG] DeepSeek AI:', DEEPSEEK_API_KEY ? 'Enabled' : 'Disabled (no API key)');
+console.log('[CONFIG] Bitget Testnet:', ENABLE_BITGET_TESTNET ? 'Enabled' : 'Disabled (using public API)');
 
 // Cache for market data
 let marketDataCache = {
@@ -143,9 +149,9 @@ function loadLifecycleData() {
 }
 
 /**
- * Generate AI reasoning from signals
+ * Generate AI reasoning from signals (local fallback)
  */
-function generateAIReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish) {
+function generateLocalReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish) {
   bullish = bullish || signals.filter(s => s.score >= 60).length;
   neutral = neutral || signals.filter(s => s.score >= 40 && s.score < 60).length;
   bearish = bearish || signals.filter(s => s.score < 40).length;
@@ -176,8 +182,8 @@ function generateAIReasoning(signals, totalScore, recommendation, marketData, bu
     if (cryptoKeys.length > 0) {
       const crypto = marketData[cryptoKeys[0]];
       if (crypto) {
-        const btcChange = parseFloat(crypto.change24h) * 100;
-        reasoning.keyPoints.push(`Price at $${parseFloat(crypto.lastPr).toLocaleString()} (${btcChange > 0 ? '+' : ''}${btcChange.toFixed(2)}%)`);
+        const cryptoChange = parseFloat(crypto.change24h) * 100;
+        reasoning.keyPoints.push(`Price at $${parseFloat(crypto.lastPr).toLocaleString()} (${cryptoChange > 0 ? '+' : ''}${cryptoChange.toFixed(2)}%)`);
       }
     }
   }
@@ -189,9 +195,64 @@ function generateAIReasoning(signals, totalScore, recommendation, marketData, bu
 }
 
 /**
+ * Generate AI reasoning using DeepSeek API (if enabled)
+ */
+async function generateAIReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish, symbol = 'BTCUSDT') {
+  // Use DeepSeek if enabled and API key is available
+  if (ENABLE_DEEPSEEK_AI && DEEPSEEK_API_KEY) {
+    try {
+      const cryptoData = marketData[Object.keys(marketData)[0]];
+      const reasoningRequest = {
+        symbol,
+        marketData: {
+          price: parseFloat(cryptoData?.lastPr || '0'),
+          change24h: parseFloat(cryptoData?.change24h || '0'),
+          high24h: parseFloat(cryptoData?.high24h || '0'),
+          low24h: parseFloat(cryptoData?.low24h || '0'),
+          volume: parseFloat(cryptoData?.usdt24h || '0')
+        },
+        signals: signals.map(s => ({
+          name: s.name,
+          score: s.score,
+          weight: s.weight,
+          rationale: s.rationale
+        })),
+        totalScore,
+        recommendation
+      };
+      
+      // Import dynamically to avoid circular dependencies
+      const { getDeepSeekReasoning } = await import('../src/ai-reasoning-engine.ts');
+      const deepSeekReasoning = await getDeepSeekReasoning(reasoningRequest, DEEPSEEK_API_KEY);
+      
+      console.log('[DEEPSEEK] AI reasoning generated successfully');
+      
+      return {
+        timestamp: Date.now(),
+        decision: deepSeekReasoning.decision,
+        confidence: deepSeekReasoning.confidence,
+        summary: deepSeekReasoning.summary,
+        keyPoints: deepSeekReasoning.keyPoints,
+        action: deepSeekReasoning.decision,
+        rationale: deepSeekReasoning.rationale,
+        riskAssessment: deepSeekReasoning.riskAssessment,
+        actionPlan: deepSeekReasoning.actionPlan
+      };
+    } catch (error) {
+      console.error('[DEEPSEEK] Failed to get AI reasoning, using fallback:', error.message);
+    }
+  }
+  
+  // Fallback to local reasoning
+  console.log('[AI] Using local reasoning (DeepSeek not enabled or failed)');
+  return generateLocalReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish);
+}
+
+/**
  * Generate signal analysis from real market data
  */
 async function generateSignals(activeSymbol = 'BTCUSDT') {
+  // Make function async to support DeepSeek API calls
   try {
     const marketData = await getMarketData();
     const lifecycleData = loadLifecycleData();
@@ -352,7 +413,7 @@ async function generateSignals(activeSymbol = 'BTCUSDT') {
     
     console.log('[DASHBOARD] Generated', signals.length, 'signals:', signals.map(s => s.name));
     
-    const aiReasoning = generateAIReasoning(signals, weightedScore, recommendation, { [activeCrypto.toLowerCase().replace('usdt', '')]: cryptoData }, bullish, neutral, bearish);
+    const aiReasoning = await generateAIReasoning(signals, weightedScore, recommendation, { [activeCrypto.toLowerCase().replace('usdt', '')]: cryptoData }, bullish, neutral, bearish, activeCrypto);
     
     return {
       timestamp: Date.now(),
