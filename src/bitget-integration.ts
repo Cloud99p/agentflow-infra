@@ -43,7 +43,8 @@ export class BitgetIntegration {
   private cacheTTL: number = 30000; // 30 seconds
 
   /**
-   * Get ticker data for a symbol using bgc CLI
+   * Get ticker data for a symbol
+   * Uses public API directly (no bgc CLI required for market data)
    */
   async getTicker(symbol: string): Promise<BitgetTicker> {
     const cacheKey = `ticker:${symbol}`;
@@ -53,24 +54,14 @@ export class BitgetIntegration {
       return cached.data as BitgetTicker;
     }
 
-    try {
-      const { stdout } = await execAsync(`bgc spot spot_get_ticker --symbol ${symbol}`);
-      const data = JSON.parse(stdout);
-      
+    // Use public API directly (no authentication needed)
+    const data = await this.fetchFromPublicAPI(symbol);
+    if (data) {
       this.cache.set(cacheKey, { data, timestamp: Date.now() });
       return data;
-    } catch (error) {
-      console.error('[BITGET] Failed to fetch ticker:', error);
-      
-      // Fallback: Use Bitget public API directly
-      const fallbackData = await this.fetchFromPublicAPI(symbol);
-      if (fallbackData) {
-        this.cache.set(cacheKey, { data: fallbackData, timestamp: Date.now() });
-        return fallbackData;
-      }
-      
-      throw new Error(`Bitget API error: ${error}`);
     }
+    
+    throw new Error('Failed to fetch ticker data from Bitget');
   }
 
   /**
@@ -211,15 +202,12 @@ export class BitgetIntegration {
   }
 
   /**
-   * Fetch from Bitget public API (fallback when bgc CLI unavailable)
+   * Fetch from Bitget public API (no authentication required)
    */
   private async fetchFromPublicAPI(symbol: string): Promise<BitgetTicker | null> {
     try {
-      const baseSymbol = symbol.replace('USDT', '');
-      const response = await fetch(`https://api.bitget.com/api/spot/v1/market/ticker?symbol=${baseSymbol}USDT`);
+      const response = await fetch(`https://api.bitget.com/api/spot/v1/market/ticker?symbol=${symbol}`);
       const result = await response.json();
-      
-      console.log('[BITGET] API Response:', JSON.stringify(result, null, 2));
       
       if (result.code === '00000' && result.data) {
         const data = result.data;
@@ -233,9 +221,11 @@ export class BitgetIntegration {
           usdt24h: String(data.quoteVol || data.usdt24h || data.amount || '0'),
         };
       }
+      
+      console.error('[BITGET] API error:', result);
       return null;
     } catch (error) {
-      console.error('[BITGET] Public API fallback failed:', error);
+      console.error('[BITGET] Fetch failed:', error.message);
       return null;
     }
   }

@@ -36,21 +36,15 @@ async function main() {
     console.log('✅ Market data retrieved');
     console.log();
     console.log('BTC/USDT:');
-    if (!btcTicker.lastPr || btcTicker.lastPr === '0') {
-      console.log('  ⚠️  No data available - bgc CLI may not be configured properly');
-      console.log('  Run: npx bitget-hub upgrade-all --target claude');
-    } else {
-      console.log(`  Price:      $${btcTicker.lastPr}`);
-      console.log(`  24h High:   $${btcTicker.high24h}`);
-      console.log(`  24h Low:    $${btcTicker.low24h}`);
-      console.log(`  24h Change: ${btcTicker.change24h}`);
-      console.log(`  24h Volume: ${parseFloat(btcTicker.usdt24h || '0').toLocaleString(undefined, { maximumFractionDigits: 0 })} USDT`);
-    }
+    console.log(`  Price:      $${btcTicker.lastPr}`);
+    console.log(`  24h High:   $${btcTicker.high24h}`);
+    console.log(`  24h Low:    $${btcTicker.low24h}`);
+    console.log(`  24h Change: ${btcTicker.change24h}`);
+    console.log(`  24h Volume: ${parseFloat(btcTicker.usdt24h || '0').toLocaleString(undefined, { maximumFractionDigits: 0 })} USDT`);
     console.log();
   } catch (error) {
     console.log('⚠️  Market data fetch failed');
     console.log(`   Error: ${error}`);
-    console.log('   Try: npx bitget-hub upgrade-all --target claude');
     console.log();
   }
 
