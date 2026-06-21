@@ -676,8 +676,7 @@
                 tipChart.data.datasets[0].data = recentBundles.map(b => b.tip_amount || b.tipLamports || 0);
                 tipChart.update();
 
-                // AI Decisions
-                updateAiDecisions();
+                // AI Decisions panel removed - now using updateAIReasoning()
             }
             
             // Update market data display if available
