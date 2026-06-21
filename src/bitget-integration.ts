@@ -202,27 +202,29 @@ export class BitgetIntegration {
   }
 
   /**
-   * Fetch from Bitget public API (no authentication required)
+   * Fetch from Bitget public API V2 (no authentication required)
+   * Updated: V1 API decommissioned, using V2
    */
   private async fetchFromPublicAPI(symbol: string): Promise<BitgetTicker | null> {
     try {
-      const response = await fetch(`https://api.bitget.com/api/spot/v1/market/ticker?symbol=${symbol}`);
+      // Use V2 API (V1 was decommissioned)
+      const response = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${symbol}`);
       const result = await response.json();
       
       if (result.code === '00000' && result.data) {
-        const data = result.data;
+        const data = Array.isArray(result.data) ? result.data[0] : result.data;
         return {
           symbol: symbol,
-          lastPr: String(data.close || data.lastPr || data.last || '0'),
-          high24h: String(data.high24h || data.high || '0'),
-          low24h: String(data.low24h || data.low || '0'),
-          change24h: String(data.chg24h || data.change24h || data.change || '0'),
-          vol24h: String(data.vol || data.vol24h || '0'),
-          usdt24h: String(data.quoteVol || data.usdt24h || data.amount || '0'),
+          lastPr: String(data.close || data.lastPr || data.last || data.closePrice || '0'),
+          high24h: String(data.high24h || data.high || data.high24h || '0'),
+          low24h: String(data.low24h || data.low || data.low24h || '0'),
+          change24h: String(data.chg24h || data.change24h || data.change || data.changePercent || '0'),
+          vol24h: String(data.vol || data.vol24h || data.volume || '0'),
+          usdt24h: String(data.quoteVol || data.usdt24h || data.amount || data.turnover || '0'),
         };
       }
       
-      console.error('[BITGET] API error:', result);
+      console.error('[BITGET] V2 API error:', result);
       return null;
     } catch (error) {
       console.error('[BITGET] Fetch failed:', error.message);
