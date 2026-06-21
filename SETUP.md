@@ -447,7 +447,7 @@ npm install
 2. **Get Bitget Testnet keys** for real trading tests
 3. **Customize signals** in `src/signals/signal-engine.ts`
 4. **Add your strategies** to backtest
-5. **Submit to hackathon!** 🏆
+5. **Deploy to production!** 🚀
 
 ---
 
