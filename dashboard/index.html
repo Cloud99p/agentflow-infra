@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TX-Stack Live Monitor</title>
+    <title>AgentFlow Infra - AI Trading Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -21,14 +21,14 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
         .header {
             text-align: center;
             margin-bottom: 30px;
-            padding: 20px;
+            padding: 25px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
             backdrop-filter: blur(10px);
@@ -46,11 +46,34 @@
         .header .subtitle {
             color: #aaa;
             font-size: 1.1em;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
         }
+
+        .header .subtitle span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .badge-success { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .badge-info { background: rgba(0, 217, 255, 0.2); color: #00d9ff; }
+        .badge-warning { background: rgba(255, 170, 0, 0.2); color: #ffaa00; }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -71,9 +94,12 @@
 
         .stat-card h3 {
             color: #888;
-            font-size: 0.9em;
+            font-size: 0.85em;
             text-transform: uppercase;
             margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .stat-card .value {
@@ -82,15 +108,15 @@
             color: #00d9ff;
         }
 
-        .stat-card .label {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
-
         .stat-card.success .value { color: #00ff88; }
         .stat-card.warning .value { color: #ffaa00; }
         .stat-card.danger .value { color: #ff4444; }
+
+        .stat-card .label {
+            color: #666;
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
 
         .charts-grid {
             display: grid;
@@ -110,6 +136,9 @@
         .chart-card h3 {
             margin-bottom: 20px;
             color: #00d9ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .main-grid {
@@ -134,7 +163,7 @@
             color: #00d9ff;
         }
 
-        .bundle-item {
+        .signal-card {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
             padding: 15px;
@@ -143,41 +172,36 @@
             transition: all 0.3s;
         }
 
-        .bundle-item.success { border-left-color: #00ff88; }
-        .bundle-item.failed { border-left-color: #ff4444; }
-        .bundle-item.pending { border-left-color: #ffaa00; }
+        .signal-card.high { border-left-color: #00ff88; }
+        .signal-card.medium { border-left-color: #ffaa00; }
+        .signal-card.low { border-left-color: #ff4444; }
 
-        .bundle-header {
+        .signal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
-        .bundle-id {
+        .signal-name {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .signal-score {
             font-family: monospace;
             color: #00d9ff;
-            font-size: 0.9em;
+            font-size: 1.1em;
         }
 
-        .bundle-status {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            font-weight: bold;
-        }
+        .signal-score.high { color: #00ff88; }
+        .signal-score.medium { color: #ffaa00; }
+        .signal-score.low { color: #ff4444; }
 
-        .bundle-status.success { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
-        .bundle-status.failed { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
-        .bundle-status.pending { background: rgba(255, 170, 0, 0.2); color: #ffaa00; }
-
-        .bundle-details {
+        .signal-rationale {
             font-size: 0.85em;
             color: #888;
-        }
-
-        .bundle-details span {
-            margin-right: 15px;
+            line-height: 1.4;
         }
 
         .ai-decisions-panel {
@@ -186,8 +210,6 @@
             padding: 25px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            max-width: 400px;
-            margin-left: auto;
         }
 
         .ai-decisions-panel h3 {
@@ -228,10 +250,10 @@
         .decision-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
 
-        .decision-time {
+        .decision-action {
             font-size: 0.8em;
             color: #888;
         }
@@ -243,16 +265,16 @@
 
         .health-bar {
             width: 100%;
-            height: 8px;
+            height: 6px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
+            border-radius: 3px;
             margin-top: 10px;
             overflow: hidden;
         }
 
         .health-fill {
             height: 100%;
-            border-radius: 4px;
+            border-radius: 3px;
             transition: width 0.5s, background-color 0.5s;
         }
 
@@ -327,6 +349,53 @@
             opacity: 0.5;
         }
 
+        .signal-engine-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .signal-engine-section h3 {
+            color: #00d9ff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .signal-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .signal-summary-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .signal-summary-item .label {
+            color: #888;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+
+        .signal-summary-item .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+
+        .signal-summary-item .value.recommendation {
+            color: #00ff88;
+        }
+
         @media (max-width: 768px) {
             .main-grid {
                 grid-template-columns: 1fr;
@@ -341,14 +410,18 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 TX-Stack Live Monitor</h1>
-            <p class="subtitle">Real-time transaction stack monitoring</p>
+            <h1>🤖 AgentFlow Infra</h1>
+            <p class="subtitle">
+                <span>Trading Infrastructure for AI Agents</span>
+                <span class="badge badge-info">Bitget Integrated</span>
+                <span class="badge badge-success">10 Signals Active</span>
+            </p>
         </div>
 
         <div class="controls">
-            <button class="btn btn-primary" onclick="refreshData()">🔄 Refresh</button>
-            <button class="btn btn-secondary" onclick="exportData()">📊 Export</button>
-            <button class="btn btn-secondary" onclick="toggleAutoRefresh()">⏸️ Pause</button>
+            <button class="btn btn-primary" onclick="refreshData()">🔄 Refresh Data</button>
+            <button class="btn btn-secondary" onclick="exportData()">📊 Export Report</button>
+            <button class="btn btn-secondary" onclick="toggleAutoRefresh()">⏸️ Pause Auto-Refresh</button>
             <span class="refresh-indicator">
                 <span class="dot"></span>
                 <span id="lastUpdated">Last updated: Just now</span>
@@ -357,50 +430,72 @@
 
         <div class="stats-grid">
             <div class="stat-card">
-                <h3>Total Bundles</h3>
-                <div class="value" id="totalBundles">0</div>
-                <div class="label">Submissions</div>
+                <h3>Total Signals Scanned <span class="badge badge-info">10</span></h3>
+                <div class="value" id="totalSignals">0</div>
+                <div class="label">Independent signals</div>
             </div>
             <div class="stat-card success">
-                <h3>Success Rate</h3>
-                <div class="value" id="successRate">0%</div>
-                <div class="label">Finalized</div>
+                <h3>Overall Score</h3>
+                <div class="value" id="overallScore">0</div>
+                <div class="label">Weighted average</div>
             </div>
             <div class="stat-card">
-                <h3>Avg Tip</h3>
-                <div class="value" id="avgTip">0</div>
-                <div class="label">Lamports</div>
+                <h3>Recommendation</h3>
+                <div class="value" id="recommendation">-</div>
+                <div class="label" id="confidence">Confidence: 0%</div>
             </div>
             <div class="stat-card">
-                <!-- Network Health temporarily hidden - focus on core metrics -->
-                <h3 style="opacity: 0.5;">Network Health</h3>
-                <div class="value" id="networkHealth" style="opacity: 0.3;">Coming Soon</div>
-                <div class="health-bar">
-                    <div class="health-fill" id="healthFill" style="width: 0%; background: #00ff88;"></div>
+                <h3>Total Trades <span class="badge badge-warning">187+</span></h3>
+                <div class="value" id="totalTrades">0</div>
+                <div class="label">Executed bundles</div>
+            </div>
+        </div>
+
+        <div class="signal-engine-section">
+            <h3>📊 Signal Engine (Inspired by DCA Claw)</h3>
+            <div class="signal-summary">
+                <div class="signal-summary-item">
+                    <div class="label">Bullish Signals</div>
+                    <div class="value" id="bullishSignals">0</div>
                 </div>
+                <div class="signal-summary-item">
+                    <div class="label">Neutral Signals</div>
+                    <div class="value" id="neutralSignals">0</div>
+                </div>
+                <div class="signal-summary-item">
+                    <div class="label">Bearish Signals</div>
+                    <div class="value" id="bearishSignals">0</div>
+                </div>
+                <div class="signal-summary-item">
+                    <div class="label">Market Regime</div>
+                    <div class="value" id="marketRegime">-</div>
+                </div>
+            </div>
+            <div id="signalList">
+                <!-- Signals will be inserted here -->
             </div>
         </div>
 
         <div class="charts-grid">
             <div class="chart-card">
-                <h3>📈 Success Rate Over Time</h3>
-                <canvas id="successChart"></canvas>
+                <h3>📈 Signal Scores Over Time</h3>
+                <canvas id="signalChart"></canvas>
             </div>
             <div class="chart-card">
-                <h3>💰 Tip Efficiency</h3>
+                <h3>💰 Tip Efficiency (Lamports)</h3>
                 <canvas id="tipChart"></canvas>
             </div>
         </div>
 
         <div class="main-grid">
             <div class="live-feed">
-                <h3>📦 Live Bundle Feed</h3>
-                <div id="bundleList">
+                <h3>📦 Recent Signal Scans</h3>
+                <div id="signalFeed">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                         </svg>
-                        <p>Run bundle tests to see live feed</p>
+                        <p>No signal scans yet</p>
                     </div>
                 </div>
             </div>
@@ -420,21 +515,21 @@
     </div>
 
     <script>
+        let signalResults = [];
         let bundles = [];
-        let aiDecisions = [];
-        let successChart, tipChart;
+        let signalChart, tipChart;
         let autoRefresh = true;
         let refreshInterval;
 
         // Initialize charts
         function initCharts() {
-            const successCtx = document.getElementById('successChart').getContext('2d');
-            successChart = new Chart(successCtx, {
+            const signalCtx = document.getElementById('signalChart').getContext('2d');
+            signalChart = new Chart(signalCtx, {
                 type: 'line',
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Success Rate',
+                        label: 'Signal Score',
                         data: [],
                         borderColor: '#00d9ff',
                         backgroundColor: 'rgba(0, 217, 255, 0.1)',
@@ -507,7 +602,6 @@
 
         // Load data from lifecycle_log.json
         function loadData() {
-            // Fetch from server root (server handles routing to root or dashboard folder)
             fetch('/lifecycle_log.json')
                 .then(response => {
                     if (!response.ok) {
@@ -532,41 +626,33 @@
                 return;
             }
 
-            console.log('Updating dashboard with', bundles.length, 'bundles');
-
             // Stats
             const total = bundles.length;
-            // Check for failure property (our format) or status property (old format)
             const successful = bundles.filter(b => b.stages?.finalized || b.stages?.confirmed || b.status === 'finalized' || b.status === 'confirmed').length;
             const successRate = total > 0 ? Math.round((successful / total) * 100) : 0;
             const avgTip = bundles.reduce((sum, b) => sum + (b.tip_amount || b.tipLamports || 0), 0) / total;
-            const avgHealth = bundles.reduce((sum, b) => sum + (b.healthScore || 50), 0) / total;
 
-            document.getElementById('totalBundles').textContent = total;
-            document.getElementById('successRate').textContent = successRate + '%';
-            document.getElementById('avgTip').textContent = avgTip.toFixed(0);
-            document.getElementById('networkHealth').textContent = avgHealth.toFixed(0) + '/100';
-
-            // Health bar
-            const healthFill = document.getElementById('healthFill');
-            healthFill.style.width = avgHealth + '%';
-            healthFill.style.backgroundColor = avgHealth >= 70 ? '#00ff88' : avgHealth >= 40 ? '#ffaa00' : '#ff4444';
+            document.getElementById('totalSignals').textContent = bundles.length;
+            document.getElementById('totalTrades').textContent = bundles.length;
+            document.getElementById('recommendation').textContent = successRate > 50 ? 'BUY' : successRate > 30 ? 'HOLD' : 'SELL';
+            document.getElementById('recommendation').className = 'value ' + (successRate > 50 ? 'success' : successRate > 30 ? 'warning' : 'danger');
+            document.getElementById('confidence').textContent = `Success Rate: ${successRate}%`;
 
             // Charts
             const recentBundles = bundles.slice(-10);
-            successChart.data.labels = recentBundles.map((_, i) => i + 1);
-            successChart.data.datasets[0].data = recentBundles.map(b => {
-                if (b.status === 'finalized' || b.status === 'confirmed') return 100;
+            signalChart.data.labels = recentBundles.map((_, i) => i + 1);
+            signalChart.data.datasets[0].data = recentBundles.map(b => {
+                if (b.stages?.finalized || b.stages?.confirmed || b.status === 'finalized' || b.status === 'confirmed') return 100;
                 return 50;
             });
-            successChart.update();
+            signalChart.update();
 
             tipChart.data.labels = recentBundles.map((_, i) => `Bundle ${i + 1}`);
             tipChart.data.datasets[0].data = recentBundles.map(b => b.tip_amount || b.tipLamports || 0);
             tipChart.update();
 
             // Live feed
-            updateBundleList();
+            updateSignalFeed();
 
             // AI Decisions
             updateAiDecisions();
@@ -575,27 +661,25 @@
             document.getElementById('lastUpdated').textContent = 'Last updated: Just now';
         }
 
-        // Update bundle list
-        function updateBundleList() {
-            const list = document.getElementById('bundleList');
+        // Update signal feed
+        function updateSignalFeed() {
+            const feed = document.getElementById('signalFeed');
             
             if (bundles.length === 0) {
-                list.innerHTML = `
+                feed.innerHTML = `
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                         </svg>
-                        <p>Run bundle tests to see live feed</p>
+                        <p>No signal scans yet</p>
                     </div>
                 `;
                 return;
             }
 
-            // Show last 10 bundles (newest first)
             const recent = [...bundles].reverse().slice(0, 10);
             
-            list.innerHTML = recent.map(b => {
-                // Determine status from stages or failure
+            feed.innerHTML = recent.map(b => {
                 const isFinalized = b.stages?.finalized || b.status === 'finalized';
                 const isConfirmed = b.stages?.confirmed || b.status === 'confirmed';
                 const hasFailure = b.failure || b.failureType;
@@ -603,17 +687,16 @@
                 const bundleClass = isFinalized || isConfirmed ? 'success' : hasFailure ? 'failed' : 'pending';
                 
                 return `
-                    <div class="bundle-item ${bundleClass}">
-                        <div class="bundle-header">
-                            <span class="bundle-id">#${b.bundle_id || b.bundleId || 'N/A'}</span>
-                            <span class="bundle-status ${bundleClass}">
-                                ${bundleStatus}
-                            </span>
+                    <div class="signal-card ${bundleClass}">
+                        <div class="signal-header">
+                            <span class="signal-name">#${b.bundle_id || b.bundleId || 'N/A'}</span>
+                            <span class="signal-score ${bundleClass}">${bundleStatus.toUpperCase()}</span>
                         </div>
-                        <div class="bundle-details">
-                            <span>Slot: ${b.submission_slot || b.submittedSlot || 'N/A'}</span>
-                            <span>Tip: ${b.tip_amount || b.tipLamports || 0} lamports</span>
-                            ${b.failure?.type ? `<span style="color: #ff4444">Error: ${b.failure.type}</span>` : ''}
+                        <div class="signal-rationale">
+                            <div>Slot: ${b.submission_slot || b.submittedSlot || 'N/A'}</div>
+                            <div>Tip: ${b.tip_amount || b.tipLamports || 0} lamports</div>
+                            ${b.failure?.type ? `<div style="color: #ff4444; margin-top: 5px">Error: ${b.failure.type}</div>` : ''}
+                            ${b.aiReasoning ? `<div style="color: #00d9ff; margin-top: 5px">AI: ${b.aiReasoning.substring(0, 80)}...</div>` : ''}
                         </div>
                     </div>
                 `;
@@ -624,12 +707,10 @@
         function updateAiDecisions() {
             const container = document.getElementById('aiDecisions');
             
-            // Extract AI decisions from bundles (check multiple formats)
             const aiDecisions = bundles
                 .filter(b => b.aiReasoning || b.agent_reasoning || b.failure?.agent_reasoning)
                 .map(b => {
                     try {
-                        // Try different formats
                         let reasoning = null;
                         if (b.aiReasoning) {
                             reasoning = b.aiReasoning;
@@ -683,7 +764,7 @@
                     <div class="decision-item" style="border-left-color: ${actionColor}">
                         <div class="decision-header">
                             <span style="font-weight: bold; color: ${actionColor}">${actionIcon} ${d.action?.toUpperCase() || 'ANALYZED'}</span>
-                            <span class="decision-time">#${d.bundleId?.slice(-6) || 'N/A'}</span>
+                            <span class="decision-action">#${d.bundleId?.slice(-6) || 'N/A'}</span>
                         </div>
                         <div class="decision-text" style="font-size: 0.75em; margin: 8px 0;">
                             <div style="color: #ff4444; margin-bottom: 5px">Failure: ${d.failureType || 'Unknown'}</div>
@@ -707,7 +788,7 @@
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'tx-stack-data-' + new Date().toISOString().split('T')[0] + '.json';
+            link.download = 'agentflow-data-' + new Date().toISOString().split('T')[0] + '.json';
             link.click();
         }
 
@@ -715,7 +796,7 @@
         function toggleAutoRefresh() {
             autoRefresh = !autoRefresh;
             const btn = document.querySelector('.btn-secondary:last-child');
-            btn.textContent = autoRefresh ? '⏸️ Pause' : '▶️ Resume';
+            btn.textContent = autoRefresh ? '⏸️ Pause Auto-Refresh' : '▶️ Resume Auto-Refresh';
             
             if (autoRefresh) {
                 startAutoRefresh();
