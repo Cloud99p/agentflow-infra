@@ -6,7 +6,7 @@
 **Tagline:** Trading Infrastructure for Autonomous AI Agents  
 **GitHub:** https://github.com/Cloud99p/agentflow-infra  
 **Demo:** http://localhost:3000 (dashboard)  
-**Evidence:** `evidence/` folder (28+ files, 140+ trades)
+**Evidence:** `evidence/` folder (13+ test runs, 187+ bundles)
 
 ---
 
@@ -260,11 +260,11 @@ Located in `evidence/` folder:
 
 | File Type | Count | Description |
 |-----------|-------|-------------|
-| **Trade Executions** | 140+ | Real execution records |
-| **AI Decisions** | 20+ | DeepSeek analysis with reasoning |
-| **Proof Chains** | 20+ | SHA-256 hashed audit trail |
-| **Dashboard Screenshots** | 3 | Live monitoring UI |
-| **Performance Reports** | 3 | JSON, MD, CSV exports |
+| **Test Runs** | 13+ | Individual test run JSON files |
+| **Total Bundles** | 187+ | Real Jito bundle submissions |
+| **AI Decisions** | 109+ | DeepSeek analysis with reasoning |
+| **Proof Chains** | 187+ | SHA-256 hashed audit trail |
+| **Dashboard Screenshots** | 3 | Live monitoring UI (pending upload) |
 
 ### Optional Links
 
