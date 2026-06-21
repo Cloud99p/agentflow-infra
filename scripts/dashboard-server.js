@@ -18,6 +18,8 @@ const PORT = process.env.DASHBOARD_PORT || 3000;
 let marketDataCache = {
   btcTicker: null,
   ethTicker: null,
+  solTicker: null,
+  xrpTicker: null,
   lastUpdate: 0,
   cacheTTL: 30000 // 30 seconds
 };
@@ -84,11 +86,13 @@ async function getMarketData() {
   const now = Date.now();
   
   // Return cached data if still valid
-  if (marketDataCache.btcTicker && marketDataCache.ethTicker && 
+  if (marketDataCache.btcTicker && marketDataCache.ethTicker && marketDataCache.solTicker && marketDataCache.xrpTicker &&
       (now - marketDataCache.lastUpdate) < marketDataCache.cacheTTL) {
     return {
       btc: marketDataCache.btcTicker,
       eth: marketDataCache.ethTicker,
+      sol: marketDataCache.solTicker,
+      xrp: marketDataCache.xrpTicker,
       cached: true
     };
   }
@@ -96,15 +100,19 @@ async function getMarketData() {
   // Fetch fresh data
   console.log('[DASHBOARD] Fetching fresh market data from Bitget...');
   
-  const [btcTicker, ethTicker] = await Promise.all([
+  const [btcTicker, ethTicker, solTicker, xrpTicker] = await Promise.all([
     fetchBitgetTicker('BTCUSDT'),
-    fetchBitgetTicker('ETHUSDT')
+    fetchBitgetTicker('ETHUSDT'),
+    fetchBitgetTicker('SOLUSDT'),
+    fetchBitgetTicker('XRPUSDT')
   ]);
   
   if (btcTicker && ethTicker) {
     marketDataCache = {
       btcTicker,
       ethTicker,
+      solTicker,
+      xrpTicker,
       lastUpdate: now,
       cacheTTL: 30000
     };
@@ -113,6 +121,8 @@ async function getMarketData() {
   return {
     btc: btcTicker,
     eth: ethTicker,
+    sol: solTicker,
+    xrp: xrpTicker,
     cached: false
   };
 }

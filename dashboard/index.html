@@ -70,6 +70,73 @@
         .badge-success { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
         .badge-info { background: rgba(0, 217, 255, 0.2); color: #00d9ff; }
         .badge-warning { background: rgba(255, 170, 0, 0.2); color: #ffaa00; }
+        
+        /* Crypto Selector */
+        .crypto-selector {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .crypto-btn {
+            padding: 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: #aaa;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .crypto-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .crypto-btn.active {
+            background: rgba(0, 217, 255, 0.2);
+            border-color: #00d9ff;
+            color: #00d9ff;
+        }
+        
+        /* Crypto Price Display */
+        .crypto-price-display {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .crypto-price-item {
+            text-align: center;
+        }
+        
+        .crypto-price-item .label {
+            font-size: 0.85em;
+            color: #888;
+        }
+        
+        .crypto-price-item .price {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        .crypto-price-item .change {
+            font-size: 0.9em;
+        }
+        
+        .price-btc { color: #00d9ff; }
+        .price-eth { color: #9945FF; }
+        .price-active { color: #00ff88; }
+        .change-positive { color: #00ff88; }
+        .change-negative { color: #ff4444; }
 
         .stats-grid {
             display: grid;
@@ -416,6 +483,36 @@
                 <span class="badge badge-info">Bitget Integrated</span>
                 <span class="badge badge-success">10 Signals Active</span>
             </p>
+            
+            <!-- Crypto Selector -->
+            <div class="crypto-selector">
+                <span style="color: #888; font-size: 0.9em">Track:</span>
+                <button class="crypto-btn active" data-symbol="BTCUSDT" onclick="selectCrypto('BTCUSDT')">₿ BTC</button>
+                <button class="crypto-btn" data-symbol="ETHUSDT" onclick="selectCrypto('ETHUSDT')">Ξ ETH</button>
+                <button class="crypto-btn" data-symbol="SOLUSDT" onclick="selectCrypto('SOLUSDT')">◎ SOL</button>
+                <button class="crypto-btn" data-symbol="XRPUSDT" onclick="selectCrypto('XRPUSDT')">XRP</button>
+            </div>
+            
+            <!-- Current Crypto Price Display -->
+            <div class="crypto-price-display">
+                <div class="crypto-price-item">
+                    <div class="label">Bitcoin</div>
+                    <div class="price price-btc" id="btcPrice">$--,---</div>
+                    <div class="change" id="btcChange">--</div>
+                </div>
+                <div style="width: 1px; height: 40px; background: rgba(255,255,255,0.1)"></div>
+                <div class="crypto-price-item">
+                    <div class="label">Ethereum</div>
+                    <div class="price price-eth" id="ethPrice">$--,---</div>
+                    <div class="change" id="ethChange">--</div>
+                </div>
+                <div style="width: 1px; height: 40px; background: rgba(255,255,255,0.1)"></div>
+                <div class="crypto-price-item">
+                    <div class="label">Active Signal</div>
+                    <div class="price price-active" id="activeCrypto">BTC</div>
+                    <div class="change" id="activePrice">$--,---</div>
+                </div>
+            </div>
         </div>
 
         <div class="controls">
@@ -682,6 +779,7 @@
             // Update market data display if available
             if (marketData) {
                 console.log('[DASHBOARD] Market data:', marketData);
+                updateCryptoPrices(marketData);
             }
 
             // Update timestamp
@@ -878,6 +976,64 @@
                     loadData();
                 }
             }, 5000);
+        }
+
+        // Current active crypto
+        let activeCrypto = 'BTCUSDT';
+        
+        // Select crypto to track
+        function selectCrypto(symbol) {
+            activeCrypto = symbol;
+            
+            // Update button states
+            document.querySelectorAll('.crypto-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.symbol === symbol);
+            });
+            
+            // Update display
+            const cryptoName = symbol.replace('USDT', '');
+            document.getElementById('activeCrypto').textContent = cryptoName;
+            
+            // Refresh data immediately
+            loadData();
+            
+            console.log('[DASHBOARD] Switched to tracking:', symbol);
+        }
+        
+        // Update crypto price display
+        function updateCryptoPrices(marketData) {
+            if (!marketData) return;
+            
+            // Update BTC
+            if (marketData.btc) {
+                const btcPrice = parseFloat(marketData.btc.lastPr) || 0;
+                const btcChange = parseFloat(marketData.btc.change24h) || 0;
+                const btcChangePercent = (btcChange * 100).toFixed(2);
+                
+                document.getElementById('btcPrice').textContent = `$${btcPrice.toLocaleString(undefined, {maximumFractionDigits: 2})}`;
+                const btcChangeEl = document.getElementById('btcChange');
+                btcChangeEl.textContent = `${btcChange > 0 ? '+' : ''}${btcChangePercent}%`;
+                btcChangeEl.className = `change ${btcChange >= 0 ? 'change-positive' : 'change-negative'}`;
+            }
+            
+            // Update ETH
+            if (marketData.eth) {
+                const ethPrice = parseFloat(marketData.eth.lastPr) || 0;
+                const ethChange = parseFloat(marketData.eth.change24h) || 0;
+                const ethChangePercent = (ethChange * 100).toFixed(2);
+                
+                document.getElementById('ethPrice').textContent = `$${ethPrice.toLocaleString(undefined, {maximumFractionDigits: 2})}`;
+                const ethChangeEl = document.getElementById('ethChange');
+                ethChangeEl.textContent = `${ethChange > 0 ? '+' : ''}${ethChangePercent}%`;
+                ethChangeEl.className = `change ${ethChange >= 0 ? 'change-positive' : 'change-negative'}`;
+            }
+            
+            // Update active crypto price
+            const activeData = marketData[activeCrypto.toLowerCase().replace('usdt', '')] || marketData.btc;
+            if (activeData) {
+                const price = parseFloat(activeData.lastPr) || 0;
+                document.getElementById('activePrice').textContent = `$${price.toLocaleString(undefined, {maximumFractionDigits: 2})}`;
+            }
         }
 
         // Initialize
