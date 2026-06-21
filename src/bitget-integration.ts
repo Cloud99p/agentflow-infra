@@ -219,16 +219,18 @@ export class BitgetIntegration {
       const response = await fetch(`https://api.bitget.com/api/spot/v1/market/ticker?symbol=${baseSymbol}USDT`);
       const result = await response.json();
       
+      console.log('[BITGET] API Response:', JSON.stringify(result, null, 2));
+      
       if (result.code === '00000' && result.data) {
         const data = result.data;
         return {
           symbol: symbol,
-          lastPr: data.close || data.lastPr || '0',
-          high24h: data.high24h || '0',
-          low24h: data.low24h || '0',
-          change24h: data.chg24h || data.change24h || '0',
-          vol24h: data.vol || data.vol24h || '0',
-          usdt24h: data.quoteVol || data.usdt24h || '0',
+          lastPr: String(data.close || data.lastPr || data.last || '0'),
+          high24h: String(data.high24h || data.high || '0'),
+          low24h: String(data.low24h || data.low || '0'),
+          change24h: String(data.chg24h || data.change24h || data.change || '0'),
+          vol24h: String(data.vol || data.vol24h || '0'),
+          usdt24h: String(data.quoteVol || data.usdt24h || data.amount || '0'),
         };
       }
       return null;
