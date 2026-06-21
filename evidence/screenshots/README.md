@@ -28,7 +28,7 @@
 
 ---
 
-### 2. Signal Engine & Charts
+### 2. [Signal Engine & Charts](https://github.com/Cloud99p/agentflow-infra/blob/main/evidence/screenshots/02-signal-engine-charts.jpeg)
 **File:** `signal-engine-charts.png`
 
 **What it shows:**
@@ -45,7 +45,7 @@
 
 ---
 
-### 3. AI Reasoning Panel
+### 3. [AI Reasoning Panel](https://github.com/Cloud99p/agentflow-infra/blob/main/evidence/screenshots/03-ai-reasoning-panel.jpeg)
 **File:** `ai-reasoning-panel.png`
 
 **What it shows:**
