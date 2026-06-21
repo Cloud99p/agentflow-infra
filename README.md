@@ -214,23 +214,7 @@ npx tsx scripts/generate-report.ts
 - ✅ **Rate limiting** - Built-in protection against API abuse
 - ✅ **Fail-safe** - Circuit breakers on abnormal conditions
 
----
 
-## 🚧 Roadmap
-
-### Q3 2026
-- [ ] Bitget paper trading integration
-- [ ] Multi-exchange support (Binance, FTX, Coinbase)
-- [ ] Strategy backtesting module
-- [ ] WebSocket real-time data streaming
-
-### Q4 2026
-- [ ] Agent marketplace (pre-built strategies)
-- [ ] Social trading (copy successful agents)
-- [ ] Mobile dashboard app
-- [ ] Advanced risk management (VaR, CVaR)
-
----
 
 ## 🤝 Contributing
 
