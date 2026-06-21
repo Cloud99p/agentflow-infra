@@ -16,6 +16,8 @@
 
 **AI trading agents are only as good as their execution layer.**
 
+**Note:** Our multi-signal scoring engine is inspired by [DCA Claw](https://github.com/Argeneau12e/DCA_claw) by Samuel Oduntan (@Argeneau12e), with permission. We've adapted the core concepts and integrated them with Bitget + Solana execution.
+
 We've seen countless trading agents with brilliant strategies fail because:
 
 1. **Unreliable Execution** - Trades fail silently, no retry logic

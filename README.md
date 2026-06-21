@@ -77,6 +77,13 @@ npx tsx scripts/execute-trade.ts
 
 ## 📊 Features
 
+### 🎯 Multi-Signal Scoring Engine
+**Inspired by [DCA Claw](https://github.com/Argeneau12e/DCA_claw) by Samuel Oduntan (@Argeneau12e)**
+- **10 Independent Signals** - Momentum, volume, volatility, trend, S/R, sentiment, and more
+- **Weighted Scoring** - Configurable signal importance
+- **Plain-English Rationale** - Each signal explains its reasoning
+- **Bitget Skill Hub** - AI-powered sentiment analysis
+
 ### 🤖 AI-Powered Execution
 - **DeepSeek Integration** - Real-time AI analysis of trade failures
 - **Confidence Scoring** - AI confidence (0-1) for every decision
