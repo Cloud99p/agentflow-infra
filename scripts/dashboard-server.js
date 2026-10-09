@@ -23,6 +23,10 @@ import {
   calculatePortfolioMetrics,
   validatePortfolioState,
   emptyPortfolioState,
+  openPosition,
+  closePosition,
+  savePortfolioState,
+  isValidSymbol,
 } from '../dist/portfolio-tracker.js';
 import { runBacktest, defaultBacktestConfig } from '../dist/backtest-engine.js';
 
@@ -116,12 +120,39 @@ async function buildPortfolio() {
 /**
  * Run a real backtest over real candles for the requested symbol.
  */
-async function buildBacktest(symbol = 'BTCUSDT', interval = '1d', limit = 200) {
+async function buildBacktest(symbol = 'BTCUSDT', interval = '1d', limit = 200, overrides = {}) {
   const candles = await provider.getCandles(symbol, interval, limit);
-  return runBacktest(candles, defaultBacktestConfig(), {
+  const config = { ...defaultBacktestConfig(), ...overrides };
+  return runBacktest(candles, config, {
     symbol,
     interval,
     source: 'binance',
+  });
+}
+
+/**
+ * Read and parse a JSON request body, with a size cap so a malformed or
+ * hostile client cannot exhaust memory.
+ */
+function readJsonBody(req, maxBytes = 100_000) {
+  return new Promise((resolve, reject) => {
+    let raw = '';
+    req.on('data', (chunk) => {
+      raw += chunk;
+      if (raw.length > maxBytes) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      if (!raw) return resolve({});
+      try {
+        resolve(JSON.parse(raw));
+      } catch {
+        reject(new Error('Request body is not valid JSON'));
+      }
+    });
+    req.on('error', reject);
   });
 }
 
@@ -494,7 +525,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -558,6 +589,61 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === '/api/portfolio/position' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      const state = loadPortfolioState();
+
+      openPosition(state, {
+        symbol: body.symbol,
+        amount: Number(body.amount),
+        entryPrice: Number(body.entryPrice),
+        side: body.side,
+      });
+
+      savePortfolioState(state, STATE_PATH, fs);
+      sendJson(res, 200, { ok: true, cash: state.cash, positions: state.positions.length });
+    } catch (error) {
+      // Validation failures are the client's fault: 400, not 500.
+      console.error('[DASHBOARD] Open position rejected:', error.message);
+      sendJson(res, 400, { error: error.message });
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/portfolio/close' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      const state = loadPortfolioState();
+
+      const trade = closePosition(state, {
+        symbol: body.symbol,
+        exitPrice: Number(body.exitPrice),
+        feeRate: body.feeRate,
+      });
+
+      savePortfolioState(state, STATE_PATH, fs);
+      sendJson(res, 200, { ok: true, trade, cash: state.cash, realizedPnL: state.realizedPnL });
+    } catch (error) {
+      console.error('[DASHBOARD] Close position rejected:', error.message);
+      sendJson(res, 400, { error: error.message });
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/portfolio/reset' && req.method === 'POST') {
+    try {
+      // Test-support endpoint: restores an empty portfolio. Guarded so it can
+      // never be triggered by a stray GET or a browser prefetch.
+      const state = emptyPortfolioState();
+      savePortfolioState(state, STATE_PATH, fs);
+      sendJson(res, 200, { ok: true, cash: state.cash });
+    } catch (error) {
+      sendJson(res, 500, { error: error.message });
+    }
+    return;
+  }
+
   if (url.pathname === '/api/portfolio') {
     try {
       sendJson(res, 200, await buildPortfolio());
@@ -572,10 +658,35 @@ const server = http.createServer(async (req, res) => {
     try {
       const symbol = url.searchParams.get('symbol') || 'BTCUSDT';
       const interval = url.searchParams.get('interval') || '1d';
-      sendJson(res, 200, await buildBacktest(symbol, interval, 200));
+      const limit = parseInt(url.searchParams.get('limit') || '200', 10);
+      const capital = parseFloat(url.searchParams.get('capital') || '10000');
+      const takeProfit = parseFloat(url.searchParams.get('takeProfit') || '5');
+      const stopLoss = parseFloat(url.searchParams.get('stopLoss') || '3');
+
+      // Validate before touching the network so bad input fails fast and cheaply.
+      if (!isValidSymbol(symbol)) throw new Error(`Invalid symbol: ${symbol}`);
+      if (!['1m', '5m', '15m', '1h', '4h', '1d'].includes(interval)) {
+        throw new Error(`Invalid interval: ${interval}`);
+      }
+      if (!Number.isFinite(limit) || limit < 10 || limit > 1000) {
+        throw new Error('limit must be between 10 and 1000');
+      }
+      if (!Number.isFinite(capital) || capital <= 0) throw new Error('capital must be positive');
+      if (!Number.isFinite(takeProfit) || takeProfit <= 0) throw new Error('takeProfit must be positive');
+      if (!Number.isFinite(stopLoss) || stopLoss <= 0) throw new Error('stopLoss must be positive');
+
+      sendJson(
+        res,
+        200,
+        await buildBacktest(symbol, interval, limit, {
+          initialCapital: capital,
+          takeProfit,
+          stopLoss,
+        })
+      );
     } catch (error) {
-      console.error('[DASHBOARD] Backtest API error:', error);
-      sendJson(res, 503, { error: error.message, isLive: false });
+      console.error('[DASHBOARD] Backtest API error:', error.message);
+      sendJson(res, 400, { error: error.message, isLive: false });
     }
     return;
   }

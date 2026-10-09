@@ -247,9 +247,9 @@ When you use Bitget Demo Trading:
 - **Website:** Hover over "Futures" → Click "Demo Trading"
 - **App:** Futures → "..." icon → Demo Trading
 
-**Without Demo:** Uses public Bitget API for market data + mock portfolio
+**Without Demo:** Market data comes from CoinGecko/Binance; the dashboard portfolio is simulated locally against live prices (`portfolio_state.json`)
 
-**With Demo:** Full trading simulation with virtual funds
+**With Demo:** Full trading simulation with virtual funds on Bitget's side
 
 ---
 

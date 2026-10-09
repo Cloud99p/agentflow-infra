@@ -152,6 +152,72 @@
             50% { opacity: 0.35; }
         }
 
+        /* Control panels (run backtest / open position) */
+        .control-panel {
+            margin-top: 20px;
+            padding: 18px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .control-panel h3 {
+            margin: 0 0 14px;
+            font-size: 0.95em;
+            color: #ccc;
+        }
+
+        .control-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: flex-end;
+        }
+
+        .control-row label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78em;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .control-row select,
+        .control-row input {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(0, 0, 0, 0.35);
+            color: #eee;
+            font-size: 0.95em;
+            font-family: inherit;
+            min-width: 90px;
+        }
+
+        .control-row select:focus,
+        .control-row input:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+
+        .control-message {
+            margin-top: 12px;
+            font-size: 0.85em;
+            min-height: 1.2em;
+        }
+
+        .control-message.ok { color: #00ff88; }
+        .control-message.err { color: #ff4444; }
+
+        .provenance {
+            margin-top: 10px;
+            font-size: 0.78em;
+            color: #888;
+            font-family: ui-monospace, Consolas, monospace;
+        }
+
         /* Crypto Price Display */
         .crypto-price-display {
             margin-top: 15px;
@@ -672,6 +738,36 @@
         <!-- Portfolio Tab -->
         <div id="portfolioTab" class="tab-content" style="display: none;">
             <h2>💼 Portfolio Tracking</h2>
+
+            <div class="control-panel">
+                <h3>➕ Open Position</h3>
+                <div class="control-row">
+                    <label>Symbol
+                        <select id="posSymbol">
+                            <option value="BTCUSDT">BTCUSDT</option>
+                            <option value="ETHUSDT">ETHUSDT</option>
+                            <option value="SOLUSDT">SOLUSDT</option>
+                            <option value="XRPUSDT">XRPUSDT</option>
+                        </select>
+                    </label>
+                    <label>Side
+                        <select id="posSide">
+                            <option value="long">Long</option>
+                            <option value="short">Short</option>
+                        </select>
+                    </label>
+                    <label>Amount
+                        <input type="number" id="posAmount" step="0.0001" min="0.0001" placeholder="0.05" />
+                    </label>
+                    <label>Entry price
+                        <input type="number" id="posPrice" step="0.01" min="0" placeholder="leave blank = live price" />
+                    </label>
+                    <button class="btn btn-primary" onclick="submitOpenPosition()">Open Position</button>
+                    <button class="btn btn-secondary" onclick="useLivePrice()">Use Live Price</button>
+                </div>
+                <div id="posMessage" class="control-message"></div>
+            </div>
+
             <div class="stats-grid" style="margin-top: 20px;">
                 <div class="stat-card">
                     <h3>Total Value</h3>
@@ -715,6 +811,43 @@
         <!-- Backtest Tab -->
         <div id="backtestTab" class="tab-content" style="display: none;">
             <h2>📈 Backtest Results</h2>
+
+            <div class="control-panel">
+                <h3>⚙️ Run Backtest</h3>
+                <div class="control-row">
+                    <label>Symbol
+                        <select id="btSymbol">
+                            <option value="BTCUSDT">BTCUSDT</option>
+                            <option value="ETHUSDT">ETHUSDT</option>
+                            <option value="SOLUSDT">SOLUSDT</option>
+                            <option value="XRPUSDT">XRPUSDT</option>
+                        </select>
+                    </label>
+                    <label>Interval
+                        <select id="btInterval">
+                            <option value="1d">1 day</option>
+                            <option value="4h">4 hours</option>
+                            <option value="1h">1 hour</option>
+                        </select>
+                    </label>
+                    <label>Candles
+                        <input type="number" id="btLimit" value="200" min="50" max="1000" step="50" />
+                    </label>
+                    <label>Capital
+                        <input type="number" id="btCapital" value="10000" min="100" step="100" />
+                    </label>
+                    <label>Take profit %
+                        <input type="number" id="btTakeProfit" value="5" min="0.1" step="0.5" />
+                    </label>
+                    <label>Stop loss %
+                        <input type="number" id="btStopLoss" value="3" min="0.1" step="0.5" />
+                    </label>
+                    <button class="btn btn-primary" onclick="runBacktest()">Run Backtest</button>
+                </div>
+                <div id="btMessage" class="control-message"></div>
+                <div id="btProvenance" class="provenance"></div>
+            </div>
+
             <div class="stats-grid" style="margin-top: 20px;">
                 <div class="stat-card">
                     <h3>Total Return</h3>
@@ -1261,22 +1394,35 @@
                 // Update positions list
                 const positionsList = document.getElementById('positionsList');
                 if (portfolio.positions && portfolio.positions.length > 0) {
-                    positionsList.innerHTML = portfolio.positions.map(pos => `
-                        <div class="signal-card ${pos.pnl >= 0 ? 'high' : 'low'}" style="margin-bottom: 10px;">
+                    positionsList.innerHTML = portfolio.positions.map(pos => {
+                        const priced = pos.pnl !== null && pos.pnl !== undefined;
+                        const pnlText = priced
+                            ? `${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toFixed(2)} (${pos.pnlPercent.toFixed(2)}%)`
+                            : 'no live price';
+                        const currentText = priced
+                            ? `$${pos.currentPrice.toLocaleString()}`
+                            : 'unpriced - excluded from totals';
+
+                        return `
+                        <div class="signal-card ${priced && pos.pnl >= 0 ? 'high' : 'low'}" style="margin-bottom: 10px;">
                             <div class="signal-header">
                                 <span class="signal-name">${pos.symbol} (${pos.side.toUpperCase()})</span>
-                                <span class="signal-score ${pos.pnl >= 0 ? 'high' : 'low'}" style="color: ${pos.pnl >= 0 ? '#00ff88' : '#ff4444'}">
-                                    ${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toFixed(2)} (${pos.pnlPercent.toFixed(2)}%)
+                                <span class="signal-score" style="color: ${priced && pos.pnl >= 0 ? '#00ff88' : '#ff4444'}">
+                                    ${pnlText}
                                 </span>
                             </div>
                             <div class="signal-rationale">
-                                <div>Entry: $${pos.entryPrice.toLocaleString()} | Current: $${pos.currentPrice.toLocaleString()}</div>
+                                <div>Entry: $${pos.entryPrice.toLocaleString()} | Current: ${currentText}</div>
                                 <div>Amount: ${pos.amount} | Opened: ${new Date(pos.openedAt).toLocaleDateString()}</div>
+                                <div style="margin-top: 8px">
+                                    <button class="btn btn-secondary" onclick="closePosition('${pos.symbol}')">Close at live price</button>
+                                </div>
                             </div>
                         </div>
-                    `).join('');
+                    `;
+                    }).join('');
                 } else {
-                    positionsList.innerHTML = '<p style="color: #888">No open positions</p>';
+                    positionsList.innerHTML = '<p style="color: #888">No open positions. Use the form above to open one against live prices.</p>';
                 }
                 
                 // Update allocation chart
@@ -1311,118 +1457,289 @@
             }
         }
         
-        // Load backtest data
+        // Run a backtest with the parameters from the form.
+        // Sends nothing when a field is invalid rather than guessing.
+        async function runBacktest() {
+            const msg = document.getElementById('btMessage');
+            const symbol = document.getElementById('btSymbol').value;
+            const interval = document.getElementById('btInterval').value;
+            const limit = parseInt(document.getElementById('btLimit').value, 10);
+            const capital = parseFloat(document.getElementById('btCapital').value);
+            const takeProfit = parseFloat(document.getElementById('btTakeProfit').value);
+            const stopLoss = parseFloat(document.getElementById('btStopLoss').value);
+
+            if (!Number.isFinite(limit) || limit < 50 || limit > 1000) {
+                msg.className = 'control-message err';
+                msg.textContent = 'Candles must be between 50 and 1000.';
+                return;
+            }
+            if (!Number.isFinite(capital) || capital <= 0) {
+                msg.className = 'control-message err';
+                msg.textContent = 'Capital must be a positive number.';
+                return;
+            }
+            if (!Number.isFinite(takeProfit) || takeProfit <= 0 || !Number.isFinite(stopLoss) || stopLoss <= 0) {
+                msg.className = 'control-message err';
+                msg.textContent = 'Take profit and stop loss must be positive percentages.';
+                return;
+            }
+
+            msg.className = 'control-message';
+            msg.textContent = 'Running over real candles...';
+
+            const params = new URLSearchParams({ symbol, interval, limit, capital, takeProfit, stopLoss });
+
+            try {
+                const res = await fetch(`/api/backtest?${params.toString()}`);
+                const backtest = await res.json();
+
+                if (!res.ok || backtest.isLive === false) {
+                    msg.className = 'control-message err';
+                    msg.textContent = `Backtest failed: ${backtest.error || `HTTP ${res.status}`}`;
+                    document.getElementById('btProvenance').textContent = '';
+                    return;
+                }
+
+                renderBacktest(backtest);
+
+                msg.className = 'control-message ok';
+                msg.textContent = `Done - ${backtest.totalTrades} trades over ${backtest.candleCount} candles.`;
+            } catch (error) {
+                msg.className = 'control-message err';
+                msg.textContent = `Backtest failed: ${error.message}`;
+            }
+        }
+
+        // Fetch a backtest with default parameters (used on tab load).
         async function loadBacktest() {
             try {
                 const res = await fetch('/api/backtest');
                 const backtest = await res.json();
-                
-                console.log('[DASHBOARD] Backtest data:', backtest);
-                
-                // Update stats
-                document.getElementById('backtestTotalReturn').textContent = `$${backtest.totalReturn.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                const returnEl = document.getElementById('backtestTotalReturnPercent');
-                returnEl.textContent = `${backtest.totalReturnPercent >= 0 ? '+' : ''}${backtest.totalReturnPercent.toFixed(2)}%`;
-                returnEl.style.color = backtest.totalReturnPercent >= 0 ? '#00ff88' : '#ff4444';
-                
-                document.getElementById('backtestWinRate').textContent = `${backtest.winRate.toFixed(1)}%`;
-                document.getElementById('backtestWinningTrades').textContent = backtest.winningTrades;
-                document.getElementById('backtestLosingTrades').textContent = backtest.losingTrades;
-                document.getElementById('backtestProfitFactor').textContent = backtest.profitFactor.toFixed(2);
-                document.getElementById('backtestSharpeRatio').textContent = backtest.sharpeRatio.toFixed(2);
-                
-                const drawdownEl = document.getElementById('backtestMaxDrawdown');
-                drawdownEl.textContent = `$${backtest.maxDrawdown.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                document.getElementById('backtestMaxDrawdownPercent').textContent = `${backtest.maxDrawdownPercent.toFixed(2)}%`;
-                
-                document.getElementById('backtestTotalTrades').textContent = backtest.totalTrades;
-                document.getElementById('backtestAvgDuration').textContent = backtest.avgTradeDuration.toFixed(1);
-                
-                // Update equity curve chart
-                if (backtest.equityCurve && backtest.equityCurve.length > 0) {
-                    if (!backtestEquityChart) {
-                        const ctx = document.getElementById('backtestEquityChart').getContext('2d');
-                        backtestEquityChart = new Chart(ctx, {
-                            type: 'line',
-                            data: {
-                                labels: backtest.equityCurve.map((_, i) => i + 1),
-                                datasets: [{
-                                    label: 'Equity',
-                                    data: backtest.equityCurve.map(e => e.value),
-                                    borderColor: '#00ff88',
-                                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
-                                    tension: 0.4,
-                                    fill: true
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: {
-                                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } },
-                                    x: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } }
-                                }
-                            }
-                        });
-                    } else {
-                        backtestEquityChart.data.labels = backtest.equityCurve.map((_, i) => i + 1);
-                        backtestEquityChart.data.datasets[0].data = backtest.equityCurve.map(e => e.value);
-                        backtestEquityChart.update();
-                    }
+                if (backtest.isLive === false) {
+                    document.getElementById('btMessage').className = 'control-message err';
+                    document.getElementById('btMessage').textContent = `Unavailable: ${backtest.error}`;
+                    return;
                 }
-                
-                // Update trade distribution chart
-                if (backtest.trades && backtest.trades.length > 0) {
-                    if (!tradeDistChart) {
-                        const ctx = document.getElementById('tradeDistChart').getContext('2d');
-                        tradeDistChart = new Chart(ctx, {
-                            type: 'bar',
-                            data: {
-                                labels: backtest.trades.map((_, i) => `Trade ${i + 1}`),
-                                datasets: [{
-                                    label: 'PnL',
-                                    data: backtest.trades.map(t => t.pnl),
-                                    backgroundColor: backtest.trades.map(t => t.pnl >= 0 ? '#00ff88' : '#ff4444')
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                plugins: { legend: { display: false } },
-                                scales: {
-                                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } },
-                                    x: { display: false }
-                                }
-                            }
-                        });
-                    } else {
-                        tradeDistChart.data.labels = backtest.trades.map((_, i) => `Trade ${i + 1}`);
-                        tradeDistChart.data.datasets[0].data = backtest.trades.map(t => t.pnl);
-                        tradeDistChart.data.datasets[0].backgroundColor = backtest.trades.map(t => t.pnl >= 0 ? '#00ff88' : '#ff4444');
-                        tradeDistChart.update();
-                    }
-                }
-                
-                // Update trades list
-                const tradesList = document.getElementById('tradesList');
-                if (backtest.trades && backtest.trades.length > 0) {
-                    tradesList.innerHTML = backtest.trades.slice(-10).reverse().map(t => `
-                        <div class="signal-card ${t.pnl >= 0 ? 'high' : 'low'}" style="margin-bottom: 10px;">
-                            <div class="signal-header">
-                                <span class="signal-name">${t.side.toUpperCase()} - ${t.exitReason.replace('-', ' ')}</span>
-                                <span class="signal-score ${t.pnl >= 0 ? 'high' : 'low'}" style="color: ${t.pnl >= 0 ? '#00ff88' : '#ff4444'}">
-                                    ${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}
-                                </span>
-                            </div>
-                            <div class="signal-rationale">
-                                <div>Entry: $${t.entryPrice.toLocaleString()} → Exit: $${t.exitPrice.toLocaleString()}</div>
-                                <div>PnL: ${t.pnlPercent.toFixed(2)}% | Fees: $${t.fees.toFixed(2)}</div>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-                
+                renderBacktest(backtest);
             } catch (error) {
                 console.error('[DASHBOARD] Failed to load backtest:', error);
+            }
+        }
+
+        // Render a backtest result into the stats, charts and provenance line.
+        function renderBacktest(backtest) {
+            // Show exactly what was tested. This is the anti-mock guard: if the
+            // numbers on screen ever came from somewhere else, it shows here.
+            document.getElementById('btProvenance').textContent =
+                `${backtest.symbol} \u00b7 ${backtest.interval} \u00b7 ${backtest.candleCount} candles from ` +
+                `${backtest.source} \u00b7 ${new Date(backtest.periodStart).toLocaleDateString()} to ` +
+                `${new Date(backtest.periodEnd).toLocaleDateString()}`;
+
+            document.getElementById('backtestTotalReturn').textContent = `$${backtest.totalReturn.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            const returnEl = document.getElementById('backtestTotalReturnPercent');
+            returnEl.textContent = `${backtest.totalReturnPercent >= 0 ? '+' : ''}${backtest.totalReturnPercent.toFixed(2)}%`;
+            returnEl.style.color = backtest.totalReturnPercent >= 0 ? '#00ff88' : '#ff4444';
+
+            document.getElementById('backtestWinRate').textContent = `${backtest.winRate.toFixed(1)}%`;
+            document.getElementById('backtestWinningTrades').textContent = backtest.winningTrades;
+            document.getElementById('backtestLosingTrades').textContent = backtest.losingTrades;
+            document.getElementById('backtestProfitFactor').textContent = backtest.profitFactor.toFixed(2);
+            document.getElementById('backtestSharpeRatio').textContent = backtest.sharpeRatio.toFixed(2);
+
+            document.getElementById('backtestMaxDrawdown').textContent = `$${backtest.maxDrawdown.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('backtestMaxDrawdownPercent').textContent = `${backtest.maxDrawdownPercent.toFixed(2)}%`;
+
+            document.getElementById('backtestTotalTrades').textContent = backtest.totalTrades;
+            document.getElementById('backtestAvgDuration').textContent = backtest.avgTradeDuration.toFixed(1);
+
+            // Equity curve — one point per real candle.
+            if (backtest.equityCurve && backtest.equityCurve.length > 0) {
+                const labels = backtest.equityCurve.map(e => new Date(e.timestamp).toLocaleDateString());
+                const values = backtest.equityCurve.map(e => e.value);
+
+                if (!backtestEquityChart) {
+                    const ctx = document.getElementById('backtestEquityChart').getContext('2d');
+                    backtestEquityChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: 'Equity',
+                                data: values,
+                                borderColor: '#00ff88',
+                                backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                pointRadius: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } },
+                                x: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888', maxTicksLimit: 8 } }
+                            }
+                        }
+                    });
+                } else {
+                    backtestEquityChart.data.labels = labels;
+                    backtestEquityChart.data.datasets[0].data = values;
+                    backtestEquityChart.update();
+                }
+            }
+
+            // Trade distribution.
+            if (backtest.trades && backtest.trades.length > 0) {
+                const labels = backtest.trades.map((_, i) => `Trade ${i + 1}`);
+                const values = backtest.trades.map(t => t.pnl);
+                const colors = backtest.trades.map(t => t.pnl >= 0 ? '#00ff88' : '#ff4444');
+
+                if (!tradeDistChart) {
+                    const ctx = document.getElementById('tradeDistChart').getContext('2d');
+                    tradeDistChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [{ label: 'PnL', data: values, backgroundColor: colors }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } },
+                                x: { display: false }
+                            }
+                        }
+                    });
+                } else {
+                    tradeDistChart.data.labels = labels;
+                    tradeDistChart.data.datasets[0].data = values;
+                    tradeDistChart.data.datasets[0].backgroundColor = colors;
+                    tradeDistChart.update();
+                }
+            }
+
+            const tradesList = document.getElementById('tradesList');
+            if (backtest.trades && backtest.trades.length > 0) {
+                tradesList.innerHTML = backtest.trades.slice(-10).reverse().map(t => `
+                    <div class="signal-card ${t.pnl >= 0 ? 'high' : 'low'}" style="margin-bottom: 10px;">
+                        <div class="signal-header">
+                            <span class="signal-name">${t.side.toUpperCase()} - ${t.exitReason.replace('-', ' ')}</span>
+                            <span class="signal-score ${t.pnl >= 0 ? 'high' : 'low'}" style="color: ${t.pnl >= 0 ? '#00ff88' : '#ff4444'}">
+                                ${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}
+                            </span>
+                        </div>
+                        <div class="signal-rationale">
+                            <div>Entry: $${t.entryPrice.toLocaleString()} \u2192 Exit: $${t.exitPrice.toLocaleString()}</div>
+                            <div>PNL: ${t.pnlPercent.toFixed(2)}% | Fees: $${t.fees.toFixed(2)}</div>
+                            <div>${new Date(t.entryTime).toLocaleDateString()} \u2192 ${new Date(t.exitTime).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                tradesList.innerHTML = '<p style="color: #888">No trades generated. The strategy did not trigger over this period - that is a real result, not a failure.</p>';
+            }
+        }
+
+        // Fill the entry-price box with the live price for the chosen symbol.
+        async function useLivePrice() {
+            const msg = document.getElementById('posMessage');
+            const symbol = document.getElementById('posSymbol').value;
+            try {
+                const res = await fetch('/api/market-data');
+                const market = await res.json();
+                if (market.isLive === false) throw new Error(market.error || 'market data unavailable');
+
+                const key = symbol.replace('USDT', '').toLowerCase();
+                const ticker = market[key];
+                if (!ticker) throw new Error(`no live price for ${symbol}`);
+
+                document.getElementById('posPrice').value = parseFloat(ticker.lastPr);
+                msg.className = 'control-message ok';
+                msg.textContent = `Live ${symbol} price: $${parseFloat(ticker.lastPr).toLocaleString()} (${market.source})`;
+            } catch (error) {
+                msg.className = 'control-message err';
+                msg.textContent = `Could not fetch live price: ${error.message}`;
+            }
+        }
+
+        // Open a position. Blank entry price falls back to the live price.
+        async function submitOpenPosition() {
+            const msg = document.getElementById('posMessage');
+            const symbol = document.getElementById('posSymbol').value;
+            const side = document.getElementById('posSide').value;
+            const amount = parseFloat(document.getElementById('posAmount').value);
+            let entryPrice = parseFloat(document.getElementById('posPrice').value);
+
+            if (!Number.isFinite(amount) || amount <= 0) {
+                msg.className = 'control-message err';
+                msg.textContent = 'Amount must be a positive number.';
+                return;
+            }
+
+            try {
+                if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+                    const market = await (await fetch('/api/market-data')).json();
+                    const ticker = market[symbol.replace('USDT', '').toLowerCase()];
+                    if (!ticker) throw new Error(`no live price for ${symbol}`);
+                    entryPrice = parseFloat(ticker.lastPr);
+                }
+
+                const res = await fetch('/api/portfolio/position', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, side, amount, entryPrice })
+                });
+                const result = await res.json();
+
+                if (!res.ok) {
+                    msg.className = 'control-message err';
+                    msg.textContent = `Rejected: ${result.error}`;
+                    return;
+                }
+
+                document.getElementById('posAmount').value = '';
+                msg.className = 'control-message ok';
+                msg.textContent = `Opened ${side} ${amount} ${symbol} @ $${entryPrice.toLocaleString()}. Cash: $${result.cash.toLocaleString(undefined, {maximumFractionDigits: 2})}`;
+                await loadPortfolio();
+            } catch (error) {
+                msg.className = 'control-message err';
+                msg.textContent = `Failed: ${error.message}`;
+            }
+        }
+
+        // Close a position at the live price.
+        async function closePosition(symbol) {
+            const msg = document.getElementById('posMessage');
+            try {
+                const market = await (await fetch('/api/market-data')).json();
+                const ticker = market[symbol.replace('USDT', '').toLowerCase()];
+                if (!ticker) throw new Error(`no live price for ${symbol}`);
+                const exitPrice = parseFloat(ticker.lastPr);
+
+                if (!confirm(`Close ${symbol} at the live price of $${exitPrice.toLocaleString()}?`)) return;
+
+                const res = await fetch('/api/portfolio/close', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, exitPrice })
+                });
+                const result = await res.json();
+
+                if (!res.ok) {
+                    msg.className = 'control-message err';
+                    msg.textContent = `Rejected: ${result.error}`;
+                    return;
+                }
+
+                const pnl = result.trade.pnl;
+                msg.className = 'control-message ' + (pnl >= 0 ? 'ok' : 'err');
+                msg.textContent = `Closed ${symbol} at $${exitPrice.toLocaleString()} - realized ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+                await loadPortfolio();
+            } catch (error) {
+                msg.className = 'control-message err';
+                msg.textContent = `Failed: ${error.message}`;
             }
         }
 
