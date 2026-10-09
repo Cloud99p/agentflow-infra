@@ -151,7 +151,14 @@ async function main() {
   }
 }
 
-// Run main
-main();
+// Run main only when this file is the entry point. Importing this module (for
+// tests, tooling, or the dashboard) must not boot the whole service: start()
+// installs a setInterval that never exits, so an unguarded call here would
+// hang any importer.
+import { fileURLToPath } from 'url';
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
+}
 
 export { SolanaTxStack };

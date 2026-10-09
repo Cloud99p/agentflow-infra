@@ -800,6 +800,19 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.on('error', (err) => {
+  // Without this handler a failed bind (commonly EADDRINUSE when another
+  // instance still holds the port) crashes the process with an opaque
+  // 'error' event instead of saying what went wrong.
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[DASHBOARD] Port ${PORT} is already in use.`);
+    console.error(`[DASHBOARD] Stop the process holding it, or run with PORT=<other> to pick a free port.`);
+  } else {
+    console.error(`[DASHBOARD] Server error: ${err.message}`);
+  }
+  process.exit(1);
+});
+
 server.listen(PORT, () => {
   console.log('===========================================');
   console.log('  AGENTFLOW INFRA - DASHBOARD SERVER');
