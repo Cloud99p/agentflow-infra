@@ -1,0 +1,172 @@
+{
+  "probedAt": "2026-10-09T23:18:24.794Z",
+  "server": "market-data-mcp 1.26.0",
+  "host": "localhost (Nigeria)",
+  "live": [
+    {
+      "tool": "crypto_derivatives",
+      "action": "price",
+      "ms": 435,
+      "want": "BTC price"
+    },
+    {
+      "tool": "crypto_derivatives",
+      "action": "ticker_24h",
+      "ms": 461,
+      "want": "24h ticker"
+    },
+    {
+      "tool": "crypto_derivatives",
+      "action": "klines",
+      "ms": 480,
+      "want": "OHLCV klines"
+    },
+    {
+      "tool": "technical_analysis",
+      "action": "full_analysis",
+      "ms": 797,
+      "want": "composite TA"
+    },
+    {
+      "tool": "technical_analysis",
+      "action": "rsi",
+      "ms": 557,
+      "want": "RSI"
+    },
+    {
+      "tool": "technical_analysis",
+      "action": "macd",
+      "ms": 546,
+      "want": "MACD"
+    },
+    {
+      "tool": "technical_analysis",
+      "action": "bollinger",
+      "ms": 720,
+      "want": "Bollinger"
+    },
+    {
+      "tool": "technical_analysis",
+      "action": "atr",
+      "ms": 436,
+      "want": "ATR"
+    },
+    {
+      "tool": "technical_analysis",
+      "action": "support_resistance",
+      "ms": 432,
+      "want": "S/R levels"
+    },
+    {
+      "tool": "news_feed",
+      "action": "sources",
+      "ms": 425,
+      "want": "feed list (44)"
+    },
+    {
+      "tool": "news_feed",
+      "action": "latest",
+      "ms": 20424,
+      "want": "news articles"
+    },
+    {
+      "tool": "global_data",
+      "action": "forex",
+      "ms": 21718,
+      "want": "FX rates"
+    }
+  ],
+  "dead": [
+    {
+      "tool": "sentiment_index",
+      "action": "current",
+      "ms": 30023,
+      "want": "Fear & Greed"
+    },
+    {
+      "tool": "sentiment_index",
+      "action": "history",
+      "ms": 15788,
+      "want": "F&G history"
+    },
+    {
+      "tool": "derivatives_sentiment",
+      "action": "long_short",
+      "ms": 15830,
+      "want": "long/short"
+    },
+    {
+      "tool": "derivatives_sentiment",
+      "action": "open_interest",
+      "ms": 15420,
+      "want": "open interest"
+    },
+    {
+      "tool": "macro_indicators",
+      "action": "multi_indicator",
+      "ms": 20418,
+      "want": "CPI"
+    },
+    {
+      "tool": "rates_yields",
+      "action": "rates_snapshot",
+      "ms": 20844,
+      "want": "Y10"
+    },
+    {
+      "tool": "cross_asset",
+      "action": "correlation",
+      "ms": 30001,
+      "want": "correlations"
+    },
+    {
+      "tool": "defi_analytics",
+      "action": "chains",
+      "ms": 21197,
+      "want": "chain TVL"
+    },
+    {
+      "tool": "defi_analytics",
+      "action": "stablecoins",
+      "ms": 20886,
+      "want": "stablecoin caps"
+    },
+    {
+      "tool": "network_status",
+      "action": "eth_gas",
+      "ms": 15731,
+      "want": "gas price"
+    },
+    {
+      "tool": "network_status",
+      "action": "btc_fees",
+      "ms": 15444,
+      "want": "BTC fees"
+    },
+    {
+      "tool": "crypto_market",
+      "action": "global",
+      "ms": 30012,
+      "want": "global mkt cap"
+    },
+    {
+      "tool": "crypto_market",
+      "action": "trending",
+      "ms": 30007,
+      "want": "trending coins"
+    },
+    {
+      "tool": "dex_market",
+      "action": "search",
+      "ms": 15769,
+      "want": "DEX pairs"
+    },
+    {
+      "tool": "tradfi_news",
+      "action": "crypto_news",
+      "ms": 15426,
+      "want": "Finnhub news"
+    }
+  ],
+  "note": "Dead entries are upstream fetch failures on the MCP host, not local network faults. Verified independently: a direct CoinGecko call from this host returns live prices while crypto_market/global times out through the MCP."
+}

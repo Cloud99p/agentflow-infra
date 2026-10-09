@@ -1,0 +1,87 @@
+﻿{
+    "capturedAt":  "2026-10-09T23:45:26.6651576Z",
+    "baseUrl":  "http://localhost:3000",
+    "endpoint":  "/api/signals?symbol=BTCUSDT",
+    "totalScore":  55.03,
+    "recommendation":  "HOLD",
+    "isLive":  true,
+    "dataSource":  "coingecko",
+    "liveSourceCount":  11,
+    "unavailableSources":  [
+                               "Sentiment"
+                           ],
+    "signals":  [
+                    {
+                        "name":  "Momentum",
+                        "score":  55,
+                        "source":  "coingecko",
+                        "rationale":  "BTC 24h change: 1.06%, price: $82,570"
+                    },
+                    {
+                        "name":  "Volatility",
+                        "score":  40,
+                        "source":  "coingecko",
+                        "rationale":  "BTC 24h volatility: 2.24% (H: $83,398, L: $81,572)"
+                    },
+                    {
+                        "name":  "Trend",
+                        "score":  60,
+                        "source":  "coingecko",
+                        "rationale":  "BTC short-term trend: BULLISH (1.06%)"
+                    },
+                    {
+                        "name":  "Volume",
+                        "score":  85,
+                        "source":  "coingecko",
+                        "rationale":  "BTC 24h volume: $26332M"
+                    },
+                    {
+                        "name":  "RSI",
+                        "score":  50,
+                        "source":  "binance",
+                        "rationale":  "BTC RSI(14, 1h): 51.9 - neutral"
+                    },
+                    {
+                        "name":  "MACD",
+                        "score":  30,
+                        "source":  "binance",
+                        "rationale":  "BTC MACD histogram: -12.6939 at $82,570 (Bearish)"
+                    },
+                    {
+                        "name":  "Market Regime",
+                        "score":  50,
+                        "source":  "coingecko",
+                        "rationale":  "BTC market regime: SIDEWAYS (1.06%)"
+                    },
+                    {
+                        "name":  "Support/Resistance",
+                        "score":  45.34501642935378,
+                        "source":  "coingecko",
+                        "rationale":  "BTC price position: 54.7% of 24h range (Near Resistance)"
+                    },
+                    {
+                        "name":  "Sentiment",
+                        "score":  50,
+                        "source":  "unavailable",
+                        "rationale":  "BTC sentiment source not configured - neutral score, no fabricated reading"
+                    },
+                    {
+                        "name":  "Risk Assessment",
+                        "score":  88.80743392340509,
+                        "source":  "coingecko",
+                        "rationale":  "BTC risk level: LOW (vol: 2.24%)"
+                    },
+                    {
+                        "name":  "Exchange Cross-Check",
+                        "score":  50.52864236405476,
+                        "source":  "skill-hub:crypto_derivatives",
+                        "rationale":  "CCXT reports 82657.30 vs 82570.00 primary (+0.106%)"
+                    },
+                    {
+                        "name":  "Indicator Cross-Check",
+                        "score":  50.47,
+                        "source":  "skill-hub:technical_analysis",
+                        "rationale":  "Independent RSI(14) = 50.47 (neutral), timeframe 1d | local RSI 51.86 (delta 1.39)"
+                    }
+                ]
+}

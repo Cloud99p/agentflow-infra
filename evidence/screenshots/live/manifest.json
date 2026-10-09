@@ -1,0 +1,42 @@
+{
+  "capturedAt": "2026-10-09T22:47:14.709Z",
+  "baseUrl": "http://localhost:3011",
+  "market": {
+    "source": "coingecko",
+    "isLive": true,
+    "btc": 82563,
+    "eth": 2488.26,
+    "sol": 109.29,
+    "xrp": 1.39,
+    "fetchedAt": 1791585999480
+  },
+  "signals": {
+    "symbol": "BTCUSDT",
+    "totalScore": 55.06,
+    "recommendation": "HOLD",
+    "dataSource": "coingecko",
+    "count": 10,
+    "unavailable": [
+      "Sentiment"
+    ]
+  },
+  "portfolio": {
+    "totalValue": 10000,
+    "totalPnL": 0,
+    "totalTrades": 0,
+    "winRate": 0,
+    "source": "live-prices + portfolio_state.json"
+  },
+  "backtest": {
+    "symbol": "BTCUSDT",
+    "candleCount": 200,
+    "totalTrades": 1,
+    "totalReturnPercent": -0.9747216658366962,
+    "source": "binance"
+  },
+  "screenshots": [
+    "01-dashboard-overview.png",
+    "02-portfolio-tab.png",
+    "03-backtest-tab.png"
+  ]
+}

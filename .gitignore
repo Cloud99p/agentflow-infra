@@ -20,6 +20,10 @@ keypair.json
 *.key.json
 auth-keypair.json
 
+# Evidence artifacts (auditable proof of measured results - these are not
+# secrets, and reviewers must be able to see them).
+!evidence/**/*.json
+
 # Logs
 logs/
 *.log
