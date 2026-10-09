@@ -614,6 +614,14 @@
                 <span id="sourceBadgeText">Connecting to live market data...</span>
             </div>
 
+            <!-- Cross-check strip: independent verification against the Bitget
+                 Skill Hub. Renders only sources that actually returned data, so
+                 the strip never implies coverage we do not have. -->
+            <div id="crossCheckStrip" style="display:none;margin:10px 0 0;padding:8px 12px;border-radius:6px;background:rgba(136,204,255,0.08);border:1px solid rgba(136,204,255,0.25);font-size:0.85em;color:#bbd">
+                <span style="color:#88ccff;font-weight:bold">INDEPENDENT CROSS-CHECK</span>
+                <span id="crossCheckText" style="margin-left:8px;color:#aac"></span>
+            </div>
+
             <!-- Current Crypto Price Display -->
             <div class="crypto-price-display">
                 <div class="crypto-price-item">
@@ -1029,6 +1037,9 @@
                 
                 // Update signal summary
                 if (signalsData.summary) {
+                    // Stashed for the cross-check strip, which reports which
+                    // sources are verified and which are not.
+                    window.__lastSignalSummary = signalsData.summary;
                     document.getElementById('bullishSignals').textContent = signalsData.summary.bullish || 0;
                     document.getElementById('neutralSignals').textContent = signalsData.summary.neutral || 0;
                     document.getElementById('bearishSignals').textContent = signalsData.summary.bearish || 0;
@@ -1094,11 +1105,44 @@
             }
             
             console.log('[DASHBOARD] Rendering', signals.length, 'signals');
+
+            // Populate the cross-check strip from the summary the API provides.
+            // Only claim what is actually verified.
+            const strip = document.getElementById('crossCheckStrip');
+            const stripText = document.getElementById('crossCheckText');
+            if (strip && stripText) {
+                const xcheck = signals.filter((s) => (s.source || '').startsWith('skill-hub:'));
+                const unavailable = (window.__lastSignalSummary?.unavailableSources) || [];
+                if (xcheck.length > 0) {
+                    strip.style.display = 'block';
+                    const parts = xcheck.map((s) => `${s.name}: ${s.rationale.split('|')[0].trim()}`);
+                    stripText.textContent = parts.join('   ·   ');
+                } else {
+                    strip.style.display = 'block';
+                    stripText.textContent = 'no independent sources reachable from this host right now';
+                }
+                if (unavailable.length > 0) {
+                    stripText.textContent += `   |   not verified: ${unavailable.join(', ')}`;
+                }
+            }
             
             feed.innerHTML = signals.map(signal => {
                 const scoreClass = signal.score >= 60 ? 'high' : signal.score >= 40 ? 'medium' : 'low';
                 const scoreColor = signal.score >= 60 ? '#00ff88' : signal.score >= 40 ? '#ffaa00' : '#ff4444';
-                
+
+                // Provenance badge. A neutral score is NOT the same as a real
+                // reading, so an unavailable source is marked loudly rather than
+                // blending in with genuine 50s.
+                const src = signal.source || 'unknown';
+                const isUnavailable = src === 'unavailable';
+                const isCrossCheck = src.startsWith('skill-hub:');
+                const badgeBg = isUnavailable ? '#3a1f1f' : isCrossCheck ? '#1f2f3a' : '#1f2f1f';
+                const badgeFg = isUnavailable ? '#ff8888' : isCrossCheck ? '#88ccff' : '#88ff88';
+                const badgeLabel = isUnavailable ? 'NO SOURCE' : isCrossCheck ? 'BITGET CROSS-CHECK' : src.toUpperCase();
+                const unavailableNote = isUnavailable && signal.data?.reason
+                    ? `<div style="margin-top:4px;font-size:0.8em;color:#ff8888">${signal.data.reason}</div>`
+                    : '';
+
                 return `
                     <div class="signal-card ${scoreClass}">
                         <div class="signal-header">
@@ -1106,8 +1150,9 @@
                             <span class="signal-score ${scoreClass}" style="color: ${scoreColor}">${signal.score.toFixed(0)}/100</span>
                         </div>
                         <div class="signal-rationale">
-                            <div style="font-size: 0.85em; color: #888">Weight: ${(signal.weight * 100).toFixed(0)}%</div>
+                            <div style="font-size: 0.85em; color: #888">Weight: ${(signal.weight * 100).toFixed(0)}% <span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:3px;background:${badgeBg};color:${badgeFg};font-size:0.85em">${badgeLabel}</span></div>
                             <div style="margin-top: 5px; font-style: italic; color: #aaa; font-size: 0.9em">${signal.rationale}</div>
+                            ${unavailableNote}
                         </div>
                     </div>
                 `;

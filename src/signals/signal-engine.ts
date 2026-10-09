@@ -7,7 +7,10 @@
  * @author Cloud99p - AgentFlow implementation
  */
 
-import { bitget } from '../bitget-integration';
+import { bitget } from '../bitget-integration.js';
+import { marketData } from '../market-data.js';
+import { calculateRSI } from '../technical-indicators.js';
+import { skillHubSignals } from './skill-hub-signals.js';
 
 export interface Signal {
   name: string;
@@ -15,6 +18,8 @@ export interface Signal {
   weight: number; // 0-1
   rationale: string;
   timestamp: number;
+  /** Where the score came from; 'unavailable' means it is a neutral fallback. */
+  source?: string;
   data?: any;
 }
 
@@ -32,21 +37,31 @@ export interface SignalEngineConfig {
   weights?: Record<string, number>;
   minSignals?: number;
   bitgetEnabled?: boolean;
+  /** Candle timeframe for indicator computation. Defaults to 1d. */
+  timeframe?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
 }
 
 export class SignalEngine {
   private config: SignalEngineConfig;
+  /**
+   * Most recent locally computed RSI, captured by the trend signal so the
+   * independent cross-check can compare implementations instead of just
+   * re-reporting one number.
+   */
+  private lastLocalRsi: number | null = null;
+
   private defaultWeights: Record<string, number> = {
-    momentum: 0.15,
-    volume: 0.10,
-    volatility: 0.10,
-    trend: 0.15,
-    supportResistance: 0.10,
+    momentum: 0.14,
+    volume: 0.09,
+    volatility: 0.09,
+    trend: 0.14,
+    supportResistance: 0.09,
     fundingRate: 0.08,
     openInterest: 0.07,
     sentiment: 0.10,
     marketRegime: 0.10,
     risk: 0.05,
+    crossCheck: 0.05,
   };
 
   constructor(config: SignalEngineConfig = {}) {
@@ -78,6 +93,8 @@ export class SignalEngine {
       this.sentimentSignal(symbol),
       this.marketRegimeSignal(symbol),
       this.riskSignal(symbol),
+      this.exchangeCrossCheckSignal(symbol),
+      this.indicatorCrossCheckSignal(symbol),
     ];
 
     const results = await Promise.allSettled(signalPromises);
@@ -204,25 +221,49 @@ export class SignalEngine {
    * Trend Signal (15% weight)
    * Multi-timeframe trend detection
    */
+  /**
+   * Trend Signal (14% weight)
+   *
+   * Uses the real Wilder-smoothed RSI from the indicator module over live
+   * candles, rather than the previous proxy that read only the 24h change.
+   * The RSI is cached on the instance so the independent cross-check signal
+   * can compare two genuinely separate implementations.
+   */
   private async trendSignal(symbol: string): Promise<Signal> {
     try {
-      const ticker = await bitget.getTicker(symbol);
-      const change24h = parseFloat(ticker.change24h);
+      const candles = await marketData.getCandles(symbol, this.config.timeframe || '1d', 100);
+      const closes = candles.map((c) => c.close);
+      const rsi = calculateRSI(closes, 14);
+      if (rsi === null) {
+        // Not enough candles for a real RSI: say so, do not invent one.
+        return {
+          name: 'Trend',
+          score: 50,
+          weight: this.config.weights!.trend || 0.14,
+          rationale: `Insufficient candles for RSI(14) over ${candles.length} bars — neutral, not fabricated`,
+          timestamp: Date.now(),
+          source: 'unavailable',
+          data: { available: false, candleCount: candles.length },
+        };
+      }
 
-      // Simplified trend (would need historical data for proper MA analysis)
-      let score = 50;
-      if (change24h > 3) score = 80;
-      else if (change24h > 0) score = 60;
-      else if (change24h > -3) score = 40;
-      else score = 20;
+      this.lastLocalRsi = rsi;
+      // RSI 30/70 are the conventional oversold/overbought bounds.
+      // Oversold is treated as bullish (mean-reversion), matching convention.
+      const score = Math.max(0, Math.min(100, rsi));
+
+      let label = 'NEUTRAL';
+      if (rsi < 30) label = 'OVERSOLD';
+      else if (rsi > 70) label = 'OVERBOUGHT';
 
       return {
         name: 'Trend',
         score,
-        weight: this.config.weights!.trend || 0.15,
-        rationale: `Short-term trend: ${change24h > 0 ? 'BULLISH' : 'BEARISH'} (${change24h.toFixed(2)}%)`,
+        weight: this.config.weights!.trend || 0.14,
+        rationale: `RSI(14) = ${rsi.toFixed(2)} (${label}) over ${candles.length} real candles`,
         timestamp: Date.now(),
-        data: { change24h },
+        source: 'binance',
+        data: { rsi, label, candleCount: candles.length },
       };
     } catch (error) {
       throw new Error(`Trend signal failed: ${error}`);
@@ -294,22 +335,94 @@ export class SignalEngine {
   /**
    * Sentiment Signal (10% weight)
    *
-   * The previous implementation called a Skill Hub method that returned a
-   * hardcoded placeholder and presented it as a 0-100 sentiment score. That
-   * fabricated signal has been removed. Real sentiment requires an external
-   * provider (news/social API) that is not configured, so this reports a
-   * neutral score and says so plainly instead of inventing a reading.
+   * Backed by the Bitget Skill Hub `news_feed` tool. That tool is reachable
+   * from this host but returns an empty `items` array for every feed, so the
+   * source is reported unavailable rather than scored. When the upstream feeds
+   * start returning articles, `newsSignal` tallies bullish/bearish keywords in
+   * real headlines and this becomes a genuine reading with no code change.
    *
-   * TODO: wire to a real sentiment source (CryptoPanic / LunarCrush).
+   * The previous implementation returned a hardcoded placeholder and presented
+   * it as a sentiment score. That fabricated signal is gone for good.
    */
   private async sentimentSignal(symbol: string): Promise<Signal> {
+    const news = await skillHubSignals.newsSignal();
+
     return {
       name: 'Sentiment',
-      score: 50,
+      score: news.score ?? 50,
       weight: this.config.weights!.sentiment || 0.10,
-      rationale: 'Sentiment source not configured - neutral score (no fabricated data)',
+      rationale: news.available
+        ? news.rationale
+        : `Sentiment unavailable: ${news.reason} (neutral score, not fabricated)`,
       timestamp: Date.now(),
-      data: { available: false, symbol },
+      source: news.available ? 'skill-hub:news_feed' : 'unavailable',
+      data: {
+        available: news.available,
+        symbol,
+        reason: news.reason,
+        evidence: news.evidence ?? null,
+      },
+    };
+  }
+
+  /**
+   * Exchange Cross-Check Signal
+   *
+   * Independently corroborates our primary price against a second venue via
+   * CCXT through the Skill Hub. A tight spread is neutral; a wide one is a
+   * data-integrity caution and scores away from 50.
+   */
+  private async exchangeCrossCheckSignal(symbol: string): Promise<Signal> {
+    const primary = await marketData.getTicker(symbol);
+    const check = await skillHubSignals.crossCheckPrice(symbol, parseFloat(primary.lastPr));
+
+    return {
+      name: 'Exchange Cross-Check',
+      score: check.score ?? 50,
+      weight: this.config.weights!.crossCheck || 0.05,
+      rationale: check.available
+        ? check.rationale
+        : `Price cross-check unavailable: ${check.reason} (neutral, not fabricated)`,
+      timestamp: Date.now(),
+      source: check.available ? 'skill-hub:crypto_derivatives' : 'unavailable',
+      data: { available: check.available, reason: check.reason, evidence: check.evidence ?? null },
+    };
+  }
+
+  /**
+   * Indicator Cross-Check Signal
+   *
+   * Recomputes RSI on a second independent implementation. Disagreement with
+   * our local Wilder-smoothed RSI is a real finding, so the two scores are
+   * compared rather than averaged blindly.
+   *
+   * The upstream Bollinger output is inverted (lower > upper) and its position
+   * label is wrong, so it is recorded but never scored.
+   */
+  private async indicatorCrossCheckSignal(symbol: string): Promise<Signal> {
+    const check = await skillHubSignals.crossCheckIndicators(symbol, this.config.timeframe || '1d');
+    const rsi = check.evidence?.rsi;
+    const localRsi = this.lastLocalRsi;
+
+    let note = check.available ? check.rationale : `Indicator cross-check unavailable: ${check.reason}`;
+    if (check.available && Number.isFinite(rsi) && Number.isFinite(localRsi)) {
+      const delta = Math.abs(rsi - localRsi);
+      note += ` | local RSI ${localRsi.toFixed(2)} (delta ${delta.toFixed(2)})`;
+    }
+
+    return {
+      name: 'Indicator Cross-Check',
+      score: check.score ?? 50,
+      weight: this.config.weights!.crossCheck || 0.05,
+      rationale: note,
+      timestamp: Date.now(),
+      source: check.available ? 'skill-hub:technical_analysis' : 'unavailable',
+      data: {
+        available: check.available,
+        localRsi: localRsi ?? null,
+        reason: check.reason,
+        evidence: check.evidence ?? null,
+      },
     };
   }
 

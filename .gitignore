@@ -53,3 +53,7 @@ temp/
 
 # WSL
 .wslconfig
+
+# Runtime server logs
+dashboard-run.err
+dashboard-run.log

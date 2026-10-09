@@ -19,6 +19,7 @@ import { fileURLToPath } from 'url';
 
 import { MarketDataProvider } from '../dist/market-data.js';
 import { calculateRSI, calculateMACD, calculateATR } from '../dist/technical-indicators.js';
+import { SkillHubSignals } from '../dist/signals/skill-hub-signals.js';
 import {
   calculatePortfolioMetrics,
   validatePortfolioState,
@@ -41,6 +42,9 @@ const DEEPSEEK_CACHE_TTL = 300000; // 5 minutes cache
 const PYTHON_OR_NODE_NOTE = 'Real market data (no simulation)';
 
 const provider = new MarketDataProvider({ cacheTtlMs: 15000 });
+// Independent cross-checks via the Bitget Skill Hub. Cached internally so a
+// dashboard refresh does not refetch every upstream.
+const skillHubSignals = new SkillHubSignals({ ttlMs: 60000 });
 const SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT'];
 const STATE_PATH = path.join(__dirname, '..', 'portfolio_state.json');
 
@@ -392,6 +396,72 @@ async function generateSignals(activeSymbol = 'BTCUSDT') {
   const neutral = signals.filter((s) => s.score >= 40 && s.score < 60).length;
   const bearish = signals.filter((s) => s.score < 40).length;
 
+  // Bitget Skill Hub cross-checks. These corroborate our own numbers against a
+  // second, independent implementation. Each reports its own availability, so a
+  // dead upstream shows as `unavailable` rather than a neutral score pretending
+  // to be a reading. Which upstreams are reachable is measured, see
+  // evidence/skill-hub-probe.json.
+  try {
+    const crossChecks = await skillHubSignals.crossCheckPrice(activeSymbol, price);
+    signals.push({
+      name: 'Exchange Cross-Check',
+      score: crossChecks.score ?? 50,
+      weight: 0.05,
+      rationale: crossChecks.available
+        ? crossChecks.rationale
+        : `${cryptoName} price cross-check unavailable: ${crossChecks.reason}`,
+      timestamp: Date.now(),
+      source: crossChecks.available ? 'skill-hub:crypto_derivatives' : 'unavailable',
+      data: { available: crossChecks.available, reason: crossChecks.reason, evidence: crossChecks.evidence ?? null },
+    });
+  } catch (err) {
+    console.warn(`[DASHBOARD] Exchange cross-check failed: ${err.message}`);
+    signals.push({
+      name: 'Exchange Cross-Check',
+      score: 50,
+      weight: 0.05,
+      rationale: `${cryptoName} price cross-check errored - neutral, not fabricated`,
+      timestamp: Date.now(),
+      source: 'unavailable',
+      data: { available: false },
+    });
+  }
+
+  try {
+    const taCheck = await skillHubSignals.crossCheckIndicators(activeSymbol, '1d');
+    let note = taCheck.available ? taCheck.rationale : `${cryptoName} indicator cross-check unavailable: ${taCheck.reason}`;
+    // Compare against the local RSI already computed above, when both exist.
+    const independentRsi = taCheck.evidence?.rsi;
+    if (taCheck.available && rsi !== null && Number.isFinite(independentRsi)) {
+      note += ` | local RSI ${rsi.toFixed(2)} (delta ${Math.abs(independentRsi - rsi).toFixed(2)})`;
+    }
+    signals.push({
+      name: 'Indicator Cross-Check',
+      score: taCheck.score ?? 50,
+      weight: 0.05,
+      rationale: note,
+      timestamp: Date.now(),
+      source: taCheck.available ? 'skill-hub:technical_analysis' : 'unavailable',
+      data: {
+        available: taCheck.available,
+        localRsi: rsi,
+        reason: taCheck.reason,
+        evidence: taCheck.evidence ?? null,
+      },
+    });
+  } catch (err) {
+    console.warn(`[DASHBOARD] Indicator cross-check failed: ${err.message}`);
+    signals.push({
+      name: 'Indicator Cross-Check',
+      score: 50,
+      weight: 0.05,
+      rationale: `${cryptoName} indicator cross-check errored - neutral, not fabricated`,
+      timestamp: Date.now(),
+      source: 'unavailable',
+      data: { available: false },
+    });
+  }
+
   const aiReasoning = await generateAIReasoning(
     signals,
     weightedScore,
@@ -415,6 +485,8 @@ async function generateSignals(activeSymbol = 'BTCUSDT') {
       neutral,
       bearish,
       marketRegime: signals.find((s) => s.name === 'Market Regime')?.data?.regime || 'UNKNOWN',
+      liveSourceCount: signals.filter((s) => s.source && s.source !== 'unavailable').length,
+      unavailableSources: signals.filter((s) => s.source === 'unavailable').map((s) => s.name),
     },
     aiReasoning,
     marketData: group,
