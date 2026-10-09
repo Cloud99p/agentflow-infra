@@ -103,6 +103,55 @@
             color: #00d9ff;
         }
         
+        /* Data provenance badge */
+        .source-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 12px auto 0;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.78em;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            border: 1px solid transparent;
+        }
+
+        .source-badge .source-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .source-badge-live {
+            color: #00ff88;
+            background: rgba(0, 255, 136, 0.12);
+            border-color: rgba(0, 255, 136, 0.35);
+        }
+
+        .source-badge-live .source-dot {
+            box-shadow: 0 0 8px #00ff88;
+            animation: pulse-dot 2s infinite;
+        }
+
+        .source-badge-loading {
+            color: #ffaa00;
+            background: rgba(255, 170, 0, 0.12);
+            border-color: rgba(255, 170, 0, 0.35);
+        }
+
+        .source-badge-down {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.12);
+            border-color: rgba(255, 68, 68, 0.35);
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
         /* Crypto Price Display */
         .crypto-price-display {
             margin-top: 15px;
@@ -480,7 +529,7 @@
             <h1>🤖 AgentFlow Infra</h1>
             <p class="subtitle">
                 <span>Trading Infrastructure for AI Agents</span>
-                <span class="badge badge-info">Bitget Integrated</span>
+                <span class="badge badge-info">Live Market Data</span>
                 <span class="badge badge-success">10 Signals Active</span>
             </p>
             
@@ -493,6 +542,12 @@
                 <button class="crypto-btn" data-symbol="XRPUSDT" onclick="selectCrypto('XRPUSDT')">XRP</button>
             </div>
             
+            <!-- Data provenance badge: shows whether prices are real or unavailable -->
+            <div id="sourceBadge" class="source-badge source-badge-loading" title="Where the prices on this page come from">
+                <span class="source-dot"></span>
+                <span id="sourceBadgeText">Connecting to live market data...</span>
+            </div>
+
             <!-- Current Crypto Price Display -->
             <div class="crypto-price-display">
                 <div class="crypto-price-item">
@@ -1122,9 +1177,34 @@
             console.log('[DASHBOARD] Switched to tracking:', symbol);
         }
         
+        // Show where the data on screen actually came from.
+        // Never claims live unless the API confirmed it.
+        function setSourceBadge(source, isLive) {
+            const badge = document.getElementById('sourceBadge');
+            const text = document.getElementById('sourceBadgeText');
+            if (!badge || !text) return;
+
+            badge.className = 'source-badge ' + (isLive ? 'source-badge-live' : 'source-badge-down');
+
+            if (isLive) {
+                const label = {
+                    coingecko: 'CoinGecko',
+                    binance: 'Binance',
+                    bitget: 'Bitget'
+                }[source] || source;
+                text.textContent = `LIVE MARKET DATA - ${label}`;
+                badge.title = `Prices, candles and indicators fetched live from ${label}.`;
+            } else {
+                text.textContent = 'LIVE DATA UNAVAILABLE - no prices shown';
+                badge.title = 'Every live market data source failed. Nothing is being simulated.';
+            }
+        }
+
         // Update crypto price display
         function updateCryptoPrices(marketData) {
             if (!marketData) return;
+
+            setSourceBadge(marketData.source, marketData.isLive !== false);
             
             // Update BTC
             if (marketData.btc) {

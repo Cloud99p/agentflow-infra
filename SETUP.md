@@ -185,14 +185,19 @@ You should see:
 
 ## What Works Without API Keys
 
-✅ **Real-time Bitget market data** (BTC, ETH, SOL, XRP prices)
+✅ **Live market data** (BTC, ETH, SOL, XRP via CoinGecko → Binance → Bitget failover)
 ✅ **All 10 technical signals** (Momentum, RSI, MACD, etc.)
-✅ **Portfolio tracking** (mock data for demo)
-✅ **Backtesting view** (mock data for demo)
+✅ **Real RSI/MACD** computed from Binance 1h candles
+✅ **Portfolio tracking** (persisted in `portfolio_state.json`, marked to live prices)
+✅ **Backtesting view** (runs over 200 real historical candles)
 ✅ **Dashboard auto-refresh** (every 5 seconds)
 ✅ **Crypto selector** (switch between BTC/ETH/SOL/XRP)
 
 ⚠️ **AI Reasoning** uses local fallback (still functional, just not DeepSeek-powered)
+
+> **There is no mock fallback.** If every live source fails the API returns HTTP 503
+> with `isLive: false` and the dashboard badge turns red. Simulated prices are never
+> substituted for real ones.
 
 ---
 
@@ -423,10 +428,16 @@ A: No! The dashboard works without any API keys. DeepSeek AI key is optional for
 A: With 5-minute caching, about $0.50-1/day. Without caching, $10-20/day.
 
 **Q: Can I use this for real trading?**  
-A: Currently uses mock data for portfolio/backtest. Real trading integration coming in Phase 2.
+A: The dashboard reads real market data and tracks a real persisted portfolio, but order placement is not wired to the UI. Bitget order/account access lives in `src/bitget-integration.ts` and requires the `bgc` CLI plus API credentials.
 
 **Q: How do I add more cryptos?**  
-A: Edit `scripts/dashboard-server.js` - add to `getMockData()` and `getMarketData()` functions.
+A: Add the symbol to `COINGECKO_IDS` and `SUPPORTED_SYMBOLS` in `src/market-data.ts`, then list it in `SYMBOLS` in `scripts/dashboard-server.js`. CoinGecko symbols need their API id (e.g. `bitcoin`).
+
+**Q: Why does a signal say "unavailable"?**  
+A: That signal has no configured live source (currently Sentiment). It reports a neutral 50 and is labelled, rather than inventing a value. Wire it to a real provider to make it live.
+
+**Q: What happens if Bitget is blocked in my region?**  
+A: Nothing breaks. `api.bitget.com` does not resolve from every ISP; the provider fails over to CoinGecko then Binance. Bitget is only used if the earlier sources fail.
 
 **Q: Dashboard not updating?**  
 A: Hard refresh with Ctrl+Shift+R. Check browser console (F12) for errors.
@@ -444,7 +455,7 @@ npm install
 ## Next Steps
 
 1. **Configure DeepSeek API** for better AI analysis
-2. **Get Bitget Testnet keys** for real trading tests
+2. **Configure Bitget API keys** if you want order placement (Bitget uses **Demo Trading / simulation mode** - there is no separate testnet)
 3. **Customize signals** in `src/signals/signal-engine.ts`
 4. **Add your strategies** to backtest
 5. **Deploy to production!** 🚀

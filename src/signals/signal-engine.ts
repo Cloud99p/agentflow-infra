@@ -293,39 +293,24 @@ export class SignalEngine {
 
   /**
    * Sentiment Signal (10% weight)
-   * Social sentiment via Bitget Skill Hub
+   *
+   * The previous implementation called a Skill Hub method that returned a
+   * hardcoded placeholder and presented it as a 0-100 sentiment score. That
+   * fabricated signal has been removed. Real sentiment requires an external
+   * provider (news/social API) that is not configured, so this reports a
+   * neutral score and says so plainly instead of inventing a reading.
+   *
+   * TODO: wire to a real sentiment source (CryptoPanic / LunarCrush).
    */
   private async sentimentSignal(symbol: string): Promise<Signal> {
-    try {
-      if (!this.config.bitgetEnabled) {
-        return {
-          name: 'Sentiment',
-          score: 50,
-          weight: this.config.weights!.sentiment || 0.10,
-          rationale: 'Bitget integration disabled',
-          timestamp: Date.now(),
-        };
-      }
-
-      const sentiment = await bitget.runSkillAnalysis('sentiment-analyst', symbol);
-
-      return {
-        name: 'Sentiment (Bitget)',
-        score: sentiment.confidence * 100,
-        weight: this.config.weights!.sentiment || 0.10,
-        rationale: sentiment.analysis,
-        timestamp: Date.now(),
-        data: { confidence: sentiment.confidence },
-      };
-    } catch (error) {
-      return {
-        name: 'Sentiment',
-        score: 50,
-        weight: this.config.weights!.sentiment || 0.10,
-        rationale: `Sentiment analysis failed: ${error}`,
-        timestamp: Date.now(),
-      };
-    }
+    return {
+      name: 'Sentiment',
+      score: 50,
+      weight: this.config.weights!.sentiment || 0.10,
+      rationale: 'Sentiment source not configured - neutral score (no fabricated data)',
+      timestamp: Date.now(),
+      data: { available: false, symbol },
+    };
   }
 
   /**

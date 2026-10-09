@@ -1,167 +1,99 @@
 /**
  * Bitget Agent Hub Integration
- * 
- * Integrates Bitget's MCP server and Skill Hub for market data and analysis
- * https://github.com/Bitget-AI/agent_hub
+ *
+ * NOTE: the Skill Hub analysis methods that previously lived here returned
+ * hardcoded placeholder strings ("Full integration requires MCP server setup")
+ * and presented them as analysis. Those have been removed: fabricated analysis
+ * is worse than none.
+ *
+ * Price data now comes from `market-data.ts`, which fails over between
+ * CoinGecko/Binance/Bitget. Bitget is still one of the attempted sources there.
+ *
+ * What remains here is the genuine Bitget capability: authenticated account and
+ * order access via the `bgc` CLI, plus local currency conversion. Every method
+ * that returns data performs a real call; nothing is simulated.
+ *
+ * @see https://github.com/Bitget-AI/agent_hub
  */
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { marketData, type Ticker } from './market-data.js';
 
 const execAsync = promisify(exec);
 
-export interface BitgetTicker {
-  symbol: string;
-  lastPr: string;
-  high24h: string;
-  low24h: string;
-  change24h: string;
-  vol24h: string;
-  usdt24h: string;
-}
+/** Ticker shape returned by the shared market-data provider. */
+export type BitgetTicker = Ticker;
 
 export interface BitgetMarketData {
   timestamp: number;
-  tickers: Record<string, BitgetTicker>;
-}
-
-export interface BitgetAnalysis {
-  skill: string;
-  analysis: string;
-  confidence: number;
-  timestamp: number;
+  tickers: Record<string, Ticker>;
+  source: string;
+  isLive: boolean;
 }
 
 /**
- * Bitget Agent Hub Integration
- * 
- * Uses bgc CLI tool for market data access
- * No API key required for public market data
+ * Bitget account/order integration.
+ *
+ * Requires the `bgc` CLI and Bitget API credentials for any account action.
+ * Market-data reads are NOT handled here — use `market-data.ts`.
  */
 export class BitgetIntegration {
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
-  private cacheTTL: number = 30000; // 30 seconds
+  private cacheTTL = 30_000;
 
   /**
-   * Get ticker data for a symbol
-   * Uses public API directly (no bgc CLI required for market data)
+   * Get ticker data for a symbol from the shared live provider.
+   * Throws when every live source is unavailable rather than faking a price.
    */
-  async getTicker(symbol: string): Promise<BitgetTicker> {
-    const cacheKey = `ticker:${symbol}`;
-    const cached = this.cache.get(cacheKey);
-    
-    if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
-      return cached.data as BitgetTicker;
-    }
-
-    // Use public API directly (no authentication needed)
-    const data = await this.fetchFromPublicAPI(symbol);
-    if (data) {
-      this.cache.set(cacheKey, { data, timestamp: Date.now() });
-      return data;
-    }
-    
-    throw new Error('Failed to fetch ticker data from Bitget');
+  async getTicker(symbol: string): Promise<Ticker> {
+    return marketData.getTicker(symbol);
   }
 
   /**
-   * Get multiple tickers
+   * Get multiple tickers. Rejects only if the whole snapshot fails.
    */
-  async getTickers(symbols: string[]): Promise<Record<string, BitgetTicker>> {
-    const results: Record<string, BitgetTicker> = {};
-    
-    await Promise.all(
-      symbols.map(async (symbol) => {
-        try {
-          results[symbol] = await this.getTicker(symbol);
-        } catch (error) {
-          console.error(`[BITGET] Failed to fetch ${symbol}:`, error);
-        }
-      })
-    );
-
-    return results;
+  async getTickers(symbols: string[]): Promise<Record<string, Ticker>> {
+    const snap = await marketData.getSnapshot(symbols);
+    return snap.tickers;
   }
 
   /**
-   * Get market overview for major tokens
+   * Market overview for the major pairs.
    */
   async getMarketOverview(): Promise<BitgetMarketData> {
-    const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT'];
-    const tickers = await this.getTickers(symbols);
+    const snap = await marketData.getSnapshot([
+      'BTCUSDT',
+      'ETHUSDT',
+      'SOLUSDT',
+      'XRPUSDT',
+      'BNBUSDT',
+    ]);
 
     return {
-      timestamp: Date.now(),
-      tickers,
+      timestamp: snap.fetchedAt,
+      tickers: snap.tickers,
+      source: snap.source,
+      isLive: snap.isLive,
     };
   }
 
   /**
-   * Run Bitget Skill Hub analysis
-   * Skills: macro-analyst, market-intel, news-briefing, sentiment-analyst, technical-analysis
-   */
-  async runSkillAnalysis(
-    skill: 'macro-analyst' | 'market-intel' | 'sentiment-analyst' | 'technical-analysis',
-    symbol: string
-  ): Promise<BitgetAnalysis> {
-    const cacheKey = `skill:${skill}:${symbol}`;
-    const cached = this.cache.get(cacheKey);
-    
-    if (cached && Date.now() - cached.timestamp < this.cacheTTL * 10) {
-      return cached.data as BitgetAnalysis;
-    }
-
-    try {
-      // Skill Hub uses natural language prompts
-      // This is a simplified integration - full implementation would use MCP server
-      const prompt = this.buildSkillPrompt(skill, symbol);
-      
-      // In production, this would call the MCP server or bgc skill command
-      // For now, we simulate the integration structure
-      const analysis: BitgetAnalysis = {
-        skill,
-        analysis: `[${skill}] Analysis for ${symbol} - Full integration requires MCP server setup`,
-        confidence: 0.75,
-        timestamp: Date.now(),
-      };
-
-      this.cache.set(cacheKey, { data: analysis, timestamp: Date.now() });
-      return analysis;
-    } catch (error) {
-      console.error('[BITGET] Skill analysis failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Build skill-specific prompts for Bitget Skill Hub
-   */
-  private buildSkillPrompt(skill: string, symbol: string): string {
-    const prompts: Record<string, string> = {
-      'macro-analyst': `Analyze macro conditions affecting ${symbol}: Fed policy, yield curve, BTC vs DXY/Nasdaq/Gold correlation`,
-      'market-intel': `Provide on-chain and institutional intelligence for ${symbol}: ETF flows, whale activity, DeFi TVL`,
-      'sentiment-analyst': `Analyze sentiment for ${symbol}: Fear & Greed Index, long/short ratios, funding rates`,
-      'technical-analysis': `Technical analysis for ${symbol}: 23 indicators across Trend, Volatility, Oscillator, Volume, Momentum, S/R`,
-    };
-
-    return prompts[skill] || '';
-  }
-
-  /**
-   * Get account assets (requires API key)
+   * Get account assets. Requires Bitget API credentials via the bgc CLI.
    */
   async getAccountAssets(): Promise<any> {
     try {
       const { stdout } = await execAsync('bgc account get_account_assets');
       return JSON.parse(stdout);
-    } catch (error) {
-      console.error('[BITGET] Account query failed (API key required):', error);
-      throw new Error('Bitget API key required for account operations');
+    } catch (error: any) {
+      throw new Error(
+        `Bitget account query failed (requires bgc CLI + API credentials): ${error.message}`
+      );
     }
   }
 
   /**
-   * Place spot order (requires API key)
+   * Place a spot order. Requires Bitget API credentials via the bgc CLI.
    */
   async placeOrder(params: {
     symbol: string;
@@ -170,27 +102,26 @@ export class BitgetIntegration {
     price?: string;
     size: string;
   }): Promise<any> {
-    const orderJson = JSON.stringify([{
-      symbol: params.symbol,
-      side: params.side,
-      orderType: params.orderType,
-      price: params.price,
-      size: params.size,
-    }]);
+    const orderJson = JSON.stringify([
+      {
+        symbol: params.symbol,
+        side: params.side,
+        orderType: params.orderType,
+        price: params.price,
+        size: params.size,
+      },
+    ]);
 
     try {
-      const { stdout } = await execAsync(
-        `bgc spot spot_place_order --orders '${orderJson}'`
-      );
+      const { stdout } = await execAsync(`bgc spot spot_place_order --orders '${orderJson}'`);
       return JSON.parse(stdout);
-    } catch (error) {
-      console.error('[BITGET] Order placement failed:', error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(`Bitget order placement failed: ${error.message}`);
     }
   }
 
   /**
-   * Check if bgc CLI is installed
+   * Check whether the bgc CLI is installed and callable.
    */
   async isInstalled(): Promise<boolean> {
     try {
@@ -202,38 +133,7 @@ export class BitgetIntegration {
   }
 
   /**
-   * Fetch from Bitget public API V2 (no authentication required)
-   * Updated: V1 API decommissioned, using V2
-   */
-  private async fetchFromPublicAPI(symbol: string): Promise<BitgetTicker | null> {
-    try {
-      // Use V2 API (V1 was decommissioned)
-      const response = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${symbol}`);
-      const result: any = await response.json();
-      
-      if (result.code === '00000' && result.data) {
-        const data: any = Array.isArray(result.data) ? result.data[0] : result.data;
-        return {
-          symbol: symbol,
-          lastPr: String(data.close || data.lastPr || data.last || data.closePrice || '0'),
-          high24h: String(data.high24h || data.high || '0'),
-          low24h: String(data.low24h || data.low || '0'),
-          change24h: String(data.chg24h || data.change24h || data.change || data.changePercent || '0'),
-          vol24h: String(data.vol || data.vol24h || data.volume || data.baseVolume || data.vol || '0'),
-          usdt24h: String(data.quoteVol || data.usdt24h || data.amount || data.turnover || data.quoteVolume || '0'),
-        };
-      }
-      
-      console.error('[BITGET] V2 API error:', result);
-      return null;
-    } catch (error) {
-      console.error('[BITGET] Fetch failed:', error.message);
-      return null;
-    }
-  }
-
-  /**
-   * Get installation instructions
+   * Installation and configuration instructions.
    */
   getInstallationInstructions(): string {
     return `
@@ -255,5 +155,5 @@ bgc spot spot_get_ticker --symbol BTCUSDT
   }
 }
 
-// Singleton instance
+/** Singleton instance. */
 export const bitget = new BitgetIntegration();

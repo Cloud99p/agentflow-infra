@@ -1,7 +1,14 @@
 /**
  * AgentFlow Infra - Real-Time Dashboard Server
- * 
- * Fetches real market data from Bitget and serves the dashboard
+ *
+ * Serves the dashboard and its API. ALL market data is real:
+ *   - prices/candles  -> src/market-data.ts  (CoinGecko -> Binance -> Bitget failover)
+ *   - RSI/MACD etc.   -> src/technical-indicators.ts (computed from real Binance klines)
+ *   - portfolio       -> portfolio_state.json (persisted, marked to live prices)
+ *   - backtest        -> src/backtest-engine.ts over real historical klines
+ *
+ * There is no mock fallback. If every live source is down the API returns an
+ * explicit error with `isLive: false`, never invented numbers.
  */
 
 import 'dotenv/config';
@@ -10,693 +17,579 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { MarketDataProvider } from '../dist/market-data.js';
+import { calculateRSI, calculateMACD, calculateATR } from '../dist/technical-indicators.js';
+import {
+  calculatePortfolioMetrics,
+  validatePortfolioState,
+  emptyPortfolioState,
+} from '../dist/portfolio-tracker.js';
+import { runBacktest, defaultBacktestConfig } from '../dist/backtest-engine.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.DASHBOARD_PORT || 3000;
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const ENABLE_DEEPSEEK_AI = process.env.ENABLE_DEEPSEEK_AI !== 'false';
-const ENABLE_BITGET_TESTNET = process.env.ENABLE_BITGET_TESTNET === 'true';
 const DEEPSEEK_CACHE_TTL = 300000; // 5 minutes cache
 
-// Cache for AI reasoning (to avoid burning credits)
-let aiReasoningCache = {
-  data: null,
-  timestamp: 0,
-  symbol: null
-};
+const PYTHON_OR_NODE_NOTE = 'Real market data (no simulation)';
+
+const provider = new MarketDataProvider({ cacheTtlMs: 15000 });
+const SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT'];
+const STATE_PATH = path.join(__dirname, '..', 'portfolio_state.json');
+
+let aiReasoningCache = { data: null, timestamp: 0, symbol: null };
 
 console.log('[CONFIG] DeepSeek AI:', DEEPSEEK_API_KEY ? 'Enabled' : 'Disabled (no API key)');
-console.log('[CONFIG] Bitget Testnet:', ENABLE_BITGET_TESTNET ? 'Enabled' : 'Disabled (using public API)');
-console.log('[CONFIG] AI Cache TTL:', DEEPSEEK_CACHE_TTL / 1000, 'seconds');
-
-// Cache for market data
-let marketDataCache = {
-  btcTicker: null,
-  ethTicker: null,
-  solTicker: null,
-  xrpTicker: null,
-  lastUpdate: 0,
-  cacheTTL: 30000 // 30 seconds
-};
+console.log('[CONFIG] Market data:', PYTHON_OR_NODE_NOTE);
 
 /**
- * Fetch real ticker data from Bitget public API V2
+ * Load the persisted portfolio state. Creates an empty one on first run.
+ * A corrupt file throws loudly rather than silently showing zeroes.
  */
-async function fetchBitgetTicker(symbol) {
-  try {
-    const response = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${symbol}`, {
-      timeout: 5000
-    });
-    const result = await response.json();
-    
-    if (result.code === '00000' && result.data) {
-      const data = Array.isArray(result.data) ? result.data[0] : result.data;
-      return {
-        symbol: symbol,
-        lastPr: String(data.close || data.lastPr || data.last || data.closePrice || '0'),
-        high24h: String(data.high24h || data.high || '0'),
-        low24h: String(data.low24h || data.low || '0'),
-        change24h: String(data.chg24h || data.change24h || data.change || data.changePercent || '0'),
-        vol24h: String(data.vol || data.vol24h || data.volume || data.baseVolume || '0'),
-        usdt24h: String(data.quoteVol || data.usdt24h || data.amount || data.turnover || data.quoteVolume || '0'),
-        timestamp: Date.now()
-      };
+function loadPortfolioState() {
+  if (!fs.existsSync(STATE_PATH)) {
+    const empty = emptyPortfolioState();
+    fs.writeFileSync(STATE_PATH, JSON.stringify(empty, null, 2));
+    console.log(`[PORTFOLIO] Created empty state at ${STATE_PATH}`);
+    return empty;
+  }
+
+  const raw = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+  return validatePortfolioState(raw);
+}
+
+/**
+ * Build a live portfolio snapshot. Positions are marked to real prices; any
+ * symbol that cannot be priced is reported as unpriced instead of guessed.
+ */
+async function buildPortfolio() {
+  const state = loadPortfolioState();
+  const symbols = [...new Set(state.positions.map((p) => p.symbol))];
+  const errors = [];
+  let tickers = {};
+
+  if (symbols.length > 0) {
+    try {
+      const snap = await provider.getSnapshot(symbols);
+      tickers = snap.tickers;
+    } catch (err) {
+      errors.push(`live prices unavailable: ${err.message}`);
     }
-    return null;
-  } catch (error) {
-    console.error('[BITGET] Failed to fetch ticker:', error.message);
-    return getMockData(symbol);
   }
-}
 
-/**
- * Mock data fallback (used when API is unavailable)
- */
-function getMockData(symbol) {
-  const mockPrices = {
-    'BTCUSDT': { price: 64000, change: 0.002, high: 64500, low: 63500, vol: 129000000 },
-    'ETHUSDT': { price: 1725, change: -0.003, high: 1750, low: 1715, vol: 80000000 },
-    'SOLUSDT': { price: 138, change: 0.01, high: 142, low: 135, vol: 25000000 },
-    'XRPUSDT': { price: 0.52, change: -0.005, high: 0.54, low: 0.51, vol: 15000000 }
-  };
-  
-  const mock = mockPrices[symbol] || mockPrices['BTCUSDT'];
-  const price = mock.price * (1 + (Math.random() - 0.5) * 0.001);
-  
+  const positions = [];
+  for (const p of state.positions) {
+    const ticker = tickers[p.symbol];
+    if (!ticker) {
+      errors.push(`no live price for ${p.symbol} - position excluded from totals`);
+      continue;
+    }
+    positions.push({
+      symbol: p.symbol,
+      amount: p.amount,
+      entryPrice: p.entryPrice,
+      currentPrice: parseFloat(ticker.lastPr),
+      side: p.side,
+      openedAt: p.openedAt,
+    });
+  }
+
+  const metrics = calculatePortfolioMetrics(
+    positions,
+    state.realizedPnL ?? state.tradeHistory.reduce((s, t) => s + (t.pnl || 0), 0),
+    state.tradeHistory.map((t) => ({ pnl: t.pnl, timestamp: t.closedAt || t.exitTime || 0 })),
+    state.cash
+  );
+
   return {
-    symbol: symbol,
-    lastPr: String(price.toFixed(2)),
-    high24h: String(mock.high),
-    low24h: String(mock.low),
-    change24h: String(mock.change),
-    vol24h: String(mock.vol),
-    usdt24h: String(mock.vol),
-    timestamp: Date.now()
+    ...metrics,
+    isLive: errors.length === 0,
+    source: errors.length === 0 ? 'live-prices + portfolio_state.json' : 'partial',
+    errors,
+    updatedAt: state.updatedAt,
   };
 }
 
 /**
- * Get cached market data or fetch fresh
+ * Run a real backtest over real candles for the requested symbol.
  */
-async function getMarketData() {
+async function buildBacktest(symbol = 'BTCUSDT', interval = '1d', limit = 200) {
+  const candles = await provider.getCandles(symbol, interval, limit);
+  return runBacktest(candles, defaultBacktestConfig(), {
+    symbol,
+    interval,
+    source: 'binance',
+  });
+}
+
+/**
+ * Real technical indicators computed from real candles.
+ */
+async function buildIndicators(symbol = 'BTCUSDT', interval = '1d', limit = 200) {
+  const candles = await provider.getCandles(symbol, interval, limit);
+  const closes = candles.map((c) => c.close);
+  const highs = candles.map((c) => c.high);
+  const lows = candles.map((c) => c.low);
+
+  const rsi = calculateRSI(closes);
+  const macd = calculateMACD(closes);
+  const atr = calculateATR(highs, lows, closes);
+
+  if (rsi === null) throw new Error(`Not enough candles for RSI (${candles.length})`);
+
+  return {
+    symbol,
+    interval,
+    candleCount: candles.length,
+    lastClose: closes[closes.length - 1],
+    periodStart: candles[0].timestamp,
+    periodEnd: candles[candles.length - 1].timestamp,
+    rsi,
+    macd,
+    atr,
+    source: 'binance',
+    isLive: true,
+  };
+}
+
+/**
+ * Generate the 10-signal analysis from real data only.
+ * RSI and MACD are computed from real candles, not derived from the 24h change.
+ */
+async function generateSignals(activeSymbol = 'BTCUSDT') {
+  const snap = await provider.getSnapshot(SYMBOLS);
+  const dataSource = snap.source;
+
+  const group = {};
+  for (const s of SYMBOLS) {
+    if (snap.tickers[s]) group[s] = snap.tickers[s];
+  }
+
+  const cryptoData = snap.tickers[activeSymbol];
+  if (!cryptoData) throw new Error(`No live ticker for ${activeSymbol}`);
+
+  const signals = [];
+  const cryptoName = activeSymbol.replace('USDT', '');
+  const changePercent = parseFloat(cryptoData.change24h) * 100;
+  const price = parseFloat(cryptoData.lastPr);
+  const volume = parseFloat(cryptoData.usdt24h);
+  const high = parseFloat(cryptoData.high24h);
+  const low = parseFloat(cryptoData.low24h);
+
+  const momentumScore =
+    changePercent > 5 ? 80 : changePercent > 2 ? 65 : changePercent > 0 ? 55 : changePercent > -2 ? 45 : changePercent > -5 ? 35 : 20;
+  signals.push({
+    name: 'Momentum',
+    score: momentumScore,
+    weight: 0.12,
+    rationale: `${cryptoName} 24h change: ${changePercent.toFixed(2)}%, price: $${price.toLocaleString()}`,
+    timestamp: Date.now(),
+    source: dataSource,
+  });
+
+  const volatility = low > 0 ? ((high - low) / low) * 100 : 0;
+  const volatilityScore =
+    volatility > 3 && volatility < 10 ? 75 : volatility >= 10 && volatility < 15 ? 60 : volatility < 3 ? 40 : 30;
+  signals.push({
+    name: 'Volatility',
+    score: volatilityScore,
+    weight: 0.1,
+    rationale: `${cryptoName} 24h volatility: ${volatility.toFixed(2)}% (H: $${high.toLocaleString()}, L: $${low.toLocaleString()})`,
+    timestamp: Date.now(),
+    source: dataSource,
+  });
+
+  const trendScore = changePercent > 3 ? 80 : changePercent > 0 ? 60 : changePercent > -3 ? 40 : 20;
+  signals.push({
+    name: 'Trend',
+    score: trendScore,
+    weight: 0.12,
+    rationale: `${cryptoName} short-term trend: ${changePercent > 0 ? 'BULLISH' : 'BEARISH'} (${changePercent.toFixed(2)}%)`,
+    timestamp: Date.now(),
+    source: dataSource,
+  });
+
+  const volumeScore = volume > 1_000_000_000 ? 85 : volume > 100_000_000 ? 70 : volume > 10_000_000 ? 55 : 35;
+  signals.push({
+    name: 'Volume',
+    score: volumeScore,
+    weight: 0.1,
+    rationale: `${cryptoName} 24h volume: $${(volume / 1_000_000).toFixed(0)}M`,
+    timestamp: Date.now(),
+    source: dataSource,
+  });
+
+  // Real indicators from real candles. If they cannot be computed the signal
+  // reports a neutral score and says it is unavailable - it never fakes a value.
+  let rsi = null;
+  let macd = null;
+  try {
+    const candles = await provider.getCandles(activeSymbol, '1h', 300);
+    const closes = candles.map((c) => c.close);
+    rsi = calculateRSI(closes);
+    macd = calculateMACD(closes);
+  } catch (err) {
+    console.warn(`[DASHBOARD] Indicator fetch failed for ${activeSymbol}: ${err.message}`);
+  }
+
+  if (rsi !== null) {
+    const rsiScore = rsi < 20 ? 85 : rsi < 30 ? 70 : rsi < 45 ? 55 : rsi < 55 ? 50 : rsi < 65 ? 45 : rsi < 75 ? 30 : 15;
+    signals.push({
+      name: 'RSI',
+      score: rsiScore,
+      weight: 0.12,
+      rationale: `${cryptoName} RSI(14, 1h): ${rsi.toFixed(1)} - ${
+        rsi < 30 ? 'oversold' : rsi > 70 ? 'overbought' : 'neutral'
+      }`,
+      timestamp: Date.now(),
+      source: 'binance',
+      data: { rsi, interval: '1h', period: 14 },
+    });
+  } else {
+    signals.push({
+      name: 'RSI',
+      score: 50,
+      weight: 0.12,
+      rationale: `${cryptoName} RSI unavailable (no candle data) - neutral score, no fabricated value`,
+      timestamp: Date.now(),
+      source: 'unavailable',
+      data: { available: false },
+    });
+  }
+
+  if (macd) {
+    const hist = macd.histogram;
+    const macdScore = hist > 0 ? 70 : hist > -1 ? 50 : 30;
+    signals.push({
+      name: 'MACD',
+      score: macdScore,
+      weight: 0.1,
+      rationale: `${cryptoName} MACD histogram: ${hist.toFixed(4)} at $${price.toLocaleString()} (${
+        hist > 0 ? 'Bullish' : 'Bearish'
+      })`,
+      timestamp: Date.now(),
+      source: 'binance',
+      data: macd,
+    });
+  } else {
+    signals.push({
+      name: 'MACD',
+      score: 50,
+      weight: 0.1,
+      rationale: `${cryptoName} MACD unavailable (no candle data) - neutral score, no fabricated value`,
+      timestamp: Date.now(),
+      source: 'unavailable',
+      data: { available: false },
+    });
+  }
+
+  let regime = 'SIDEWAYS';
+  let regimeScore = 50;
+  if (changePercent > 5) {
+    regime = 'BULL';
+    regimeScore = 85;
+  } else if (changePercent > 2) {
+    regime = 'BULL';
+    regimeScore = 70;
+  } else if (changePercent < -5) {
+    regime = 'BEAR';
+    regimeScore = 15;
+  } else if (changePercent < -2) {
+    regime = 'BEAR';
+    regimeScore = 30;
+  }
+  signals.push({
+    name: 'Market Regime',
+    score: regimeScore,
+    weight: 0.1,
+    rationale: `${cryptoName} market regime: ${regime} (${changePercent.toFixed(2)}%)`,
+    timestamp: Date.now(),
+    source: dataSource,
+    data: { regime, change24h: changePercent },
+  });
+
+  const rangePosition = high > low ? ((price - low) / (high - low)) * 100 : 50;
+  signals.push({
+    name: 'Support/Resistance',
+    score: Math.max(0, Math.min(100, 100 - rangePosition)),
+    weight: 0.08,
+    rationale: `${cryptoName} price position: ${rangePosition.toFixed(1)}% of 24h range (${
+      rangePosition > 50 ? 'Near Resistance' : 'Near Support'
+    })`,
+    timestamp: Date.now(),
+    source: dataSource,
+    data: { rangePosition },
+  });
+
+  // Sentiment has no configured live source. Reported as neutral and labelled,
+  // rather than derived from price and presented as sentiment.
+  signals.push({
+    name: 'Sentiment',
+    score: 50,
+    weight: 0.08,
+    rationale: `${cryptoName} sentiment source not configured - neutral score, no fabricated reading`,
+    timestamp: Date.now(),
+    source: 'unavailable',
+    data: { available: false },
+  });
+
+  signals.push({
+    name: 'Risk Assessment',
+    score: Math.max(0, 100 - volatility * 5),
+    weight: 0.08,
+    rationale: `${cryptoName} risk level: ${
+      Math.max(0, 100 - volatility * 5) > 70 ? 'LOW' : Math.max(0, 100 - volatility * 5) > 40 ? 'MEDIUM' : 'HIGH'
+    } (vol: ${volatility.toFixed(2)}%)`,
+    timestamp: Date.now(),
+    source: dataSource,
+  });
+
+  const totalWeight = signals.reduce((s, x) => s + x.weight, 0);
+  const weightedScore = totalWeight > 0 ? signals.reduce((s, x) => s + x.score * x.weight, 0) / totalWeight : 50;
+
+  let recommendation = 'HOLD';
+  if (weightedScore >= 80) recommendation = 'STRONG_BUY';
+  else if (weightedScore >= 65) recommendation = 'BUY';
+  else if (weightedScore >= 50) recommendation = 'HOLD';
+  else if (weightedScore >= 35) recommendation = 'SELL';
+  else recommendation = 'STRONG_SELL';
+
+  const bullish = signals.filter((s) => s.score >= 60).length;
+  const neutral = signals.filter((s) => s.score >= 40 && s.score < 60).length;
+  const bearish = signals.filter((s) => s.score < 40).length;
+
+  const aiReasoning = await generateAIReasoning(
+    signals,
+    weightedScore,
+    recommendation,
+    { [activeSymbol.toLowerCase().replace('usdt', '')]: cryptoData },
+    bullish,
+    neutral,
+    bearish,
+    activeSymbol
+  );
+
+  return {
+    timestamp: Date.now(),
+    symbol: activeSymbol,
+    totalScore: Math.round(weightedScore * 100) / 100,
+    recommendation,
+    confidence: Math.min(1, signals.length / 10),
+    signals,
+    summary: {
+      bullish,
+      neutral,
+      bearish,
+      marketRegime: signals.find((s) => s.name === 'Market Regime')?.data?.regime || 'UNKNOWN',
+    },
+    aiReasoning,
+    marketData: group,
+    dataSource,
+    isLive: true,
+  };
+}
+
+/**
+ * Local reasoning fallback (deterministic, derived from the real signals).
+ * Labelled as local so it is never mistaken for model output.
+ */
+function generateLocalReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish) {
+  const strongSignals = signals.filter((s) => s.score >= 65);
+  const weakSignals = signals.filter((s) => s.score < 40);
+
+  return {
+    decision: recommendation,
+    confidence: Math.round(totalScore),
+    summary: `Composite score ${totalScore.toFixed(1)}/100 based on ${signals.length} live signals (${bullish} bullish, ${neutral} neutral, ${bearish} bearish).`,
+    keyPoints: [
+      ...strongSignals.slice(0, 3).map((s) => `Bullish: ${s.name} at ${s.score}/100 - ${s.rationale}`),
+      ...weakSignals.slice(0, 3).map((s) => `Bearish: ${s.name} at ${s.score}/100 - ${s.rationale}`),
+    ],
+    rationale: `Weighted composite of ${signals.length} signals yields ${totalScore.toFixed(1)}/100, mapping to ${recommendation}.`,
+    generatedBy: 'local-rules',
+    isAIGenerated: false,
+  };
+}
+
+/**
+ * DeepSeek AI reasoning over the real signals, with caching.
+ */
+async function generateAIReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish, symbol = 'BTCUSDT') {
+  if (!ENABLE_DEEPSEEK_AI || !DEEPSEEK_API_KEY) {
+    return generateLocalReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish);
+  }
+
   const now = Date.now();
-  
-  if (marketDataCache.btcTicker && marketDataCache.ethTicker && marketDataCache.solTicker && marketDataCache.xrpTicker &&
-      (now - marketDataCache.lastUpdate) < marketDataCache.cacheTTL) {
-    return {
-      btc: marketDataCache.btcTicker,
-      eth: marketDataCache.ethTicker,
-      sol: marketDataCache.solTicker,
-      xrp: marketDataCache.xrpTicker,
-      cached: true
-    };
+  if (
+    aiReasoningCache.data &&
+    aiReasoningCache.symbol === symbol &&
+    now - aiReasoningCache.timestamp < DEEPSEEK_CACHE_TTL
+  ) {
+    return aiReasoningCache.data;
   }
-  
-  console.log('[DASHBOARD] Fetching fresh market data from Bitget...');
-  
-  const [btcTicker, ethTicker, solTicker, xrpTicker] = await Promise.all([
-    fetchBitgetTicker('BTCUSDT'),
-    fetchBitgetTicker('ETHUSDT'),
-    fetchBitgetTicker('SOLUSDT'),
-    fetchBitgetTicker('XRPUSDT')
-  ]);
-  
-  if (btcTicker && ethTicker) {
-    marketDataCache = {
-      btcTicker,
-      ethTicker,
-      solTicker,
-      xrpTicker,
-      lastUpdate: now,
-      cacheTTL: 30000
-    };
+
+  try {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a trading analyst. Respond with JSON only: {decision, confidence, summary, keyPoints: [], rationale}. decision is one of STRONG_BUY, BUY, HOLD, SELL, STRONG_SELL.',
+          },
+          {
+            role: 'user',
+            content: JSON.stringify({ symbol, totalScore, recommendation, signals, marketData }),
+          },
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!res.ok) throw new Error(`DeepSeek HTTP ${res.status}`);
+
+    const json = await res.json();
+    const content = json.choices?.[0]?.message?.content ?? '';
+    const match = content.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('DeepSeek returned no JSON object');
+
+    const parsed = JSON.parse(match[0]);
+    const result = { ...parsed, generatedBy: 'deepseek', isAIGenerated: true };
+    aiReasoningCache = { data: result, timestamp: now, symbol };
+    return result;
+  } catch (err) {
+    console.error('[DEEPSEEK] Failed, using local reasoning:', err.message);
+    return generateLocalReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish);
   }
-  
-  return {
-    btc: btcTicker,
-    eth: ethTicker,
-    sol: solTicker,
-    xrp: xrpTicker,
-    cached: false
-  };
 }
 
 /**
- * Load lifecycle log data
+ * Load lifecycle log data.
  */
 function loadLifecycleData() {
   try {
     const lifecyclePath = path.join(__dirname, '..', 'lifecycle_log.json');
-    if (fs.existsSync(lifecyclePath)) {
-      const data = fs.readFileSync(lifecyclePath, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error('[DASHBOARD] Failed to load lifecycle log:', error.message);
-  }
-  return { bundles: [] };
-}
-
-/**
- * Generate AI reasoning from signals (local fallback)
- */
-function generateLocalReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish) {
-  bullish = bullish || signals.filter(s => s.score >= 60).length;
-  neutral = neutral || signals.filter(s => s.score >= 40 && s.score < 60).length;
-  bearish = bearish || signals.filter(s => s.score < 40).length;
-  
-  const reasoning = {
-    timestamp: Date.now(),
-    decision: recommendation,
-    confidence: Math.round((Math.min(1, signals.length / 10)) * 100),
-    summary: '',
-    keyPoints: [],
-    action: 'HOLD',
-    rationale: ''
-  };
-  
-  if (recommendation === 'STRONG_BUY' || recommendation === 'BUY') {
-    reasoning.summary = `Bullish setup detected with ${bullish} strong signals. Market sentiment is positive.`;
-    reasoning.action = recommendation === 'STRONG_BUY' ? 'STRONG_BUY' : 'BUY';
-  } else if (recommendation === 'SELL' || recommendation === 'STRONG_SELL') {
-    reasoning.summary = `Bearish setup detected with ${bearish} weak signals. Consider reducing exposure.`;
-    reasoning.action = recommendation === 'STRONG_SELL' ? 'STRONG_SELL' : 'SELL';
-  } else {
-    reasoning.summary = `Mixed signals detected. Market is in consolidation. Wait for clearer direction.`;
-    reasoning.action = 'HOLD';
-  }
-  
-  if (marketData) {
-    const cryptoKeys = Object.keys(marketData);
-    if (cryptoKeys.length > 0) {
-      const crypto = marketData[cryptoKeys[0]];
-      if (crypto) {
-        const cryptoChange = parseFloat(crypto.change24h) * 100;
-        reasoning.keyPoints.push(`Price at $${parseFloat(crypto.lastPr).toLocaleString()} (${cryptoChange > 0 ? '+' : ''}${cryptoChange.toFixed(2)}%)`);
-      }
-    }
-  }
-  
-  reasoning.rationale = `${reasoning.summary} Key factors: ${reasoning.keyPoints.join('. ')}. ` +
-    `Overall score: ${totalScore.toFixed(1)}/100 with ${bullish} bullish, ${neutral} neutral, and ${bearish} bearish signals.`;
-  
-  return reasoning;
-}
-
-/**
- * Generate AI reasoning using DeepSeek API (if enabled)
- */
-async function generateAIReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish, symbol = 'BTCUSDT') {
-  const now = Date.now();
-  
-  // Return cached AI reasoning if still valid (saves credits!)
-  if (aiReasoningCache.data && 
-      aiReasoningCache.symbol === symbol &&
-      (now - aiReasoningCache.timestamp) < DEEPSEEK_CACHE_TTL) {
-    const cacheAge = Math.round((now - aiReasoningCache.timestamp) / 1000);
-    console.log(`[DEEPSEEK] Using cached reasoning (${cacheAge}s old)`);
-    return aiReasoningCache.data;
-  }
-  
-  // Use DeepSeek if enabled and API key is available
-  if (ENABLE_DEEPSEEK_AI && DEEPSEEK_API_KEY) {
-    try {
-      const cryptoData = marketData[Object.keys(marketData)[0]];
-      const cryptoName = symbol.replace('USDT', '');
-      const cryptoChange = parseFloat(cryptoData?.change24h || '0') * 100;
-      
-      // Build prompt for DeepSeek
-      const signalsText = signals.map(s => `- ${s.name}: ${s.score}/100 - ${s.rationale}`).join('\n');
-      const prompt = `Analyze this ${cryptoName} trading opportunity:
-
-Price: $${parseFloat(cryptoData?.lastPr || '0').toLocaleString()} (${cryptoChange > 0 ? '+' : ''}${cryptoChange.toFixed(2)}%)
-24h High: $${parseFloat(cryptoData?.high24h || '0').toLocaleString()}
-24h Low: $${parseFloat(cryptoData?.low24h || '0').toLocaleString()}
-Volume: $${(parseFloat(cryptoData?.usdt24h || '0') / 1_000_000).toFixed(0)}M
-
-Signals:\n${signalsText}
-
-Overall Score: ${totalScore.toFixed(1)}/100
-Recommendation: ${recommendation}
-
-Provide a concise JSON response: {"decision":"BUY|HOLD|SELL","confidence":0-100,"summary":"one sentence","keyPoints":["point1","point2"],"rationale":"detailed explanation"}`;
-
-      // Call DeepSeek API directly
-      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert crypto trading analyst. Provide concise, actionable insights in JSON format.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 500
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.choices && data.choices[0]) {
-        const content = data.choices[0].message.content;
-        // Try to parse JSON
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const deepSeekReasoning = JSON.parse(jsonMatch[0]);
-          console.log('[DEEPSEEK] AI reasoning generated successfully (NEW)');
-          
-          const reasoningResult = {
-            timestamp: Date.now(),
-            decision: deepSeekReasoning.decision || recommendation,
-            confidence: deepSeekReasoning.confidence || 80,
-            summary: deepSeekReasoning.summary || 'AI analysis complete',
-            keyPoints: deepSeekReasoning.keyPoints || ['Analysis provided by DeepSeek AI'],
-            action: deepSeekReasoning.decision || recommendation,
-            rationale: deepSeekReasoning.rationale || content,
-            riskAssessment: deepSeekReasoning.riskAssessment || 'Medium risk',
-            actionPlan: deepSeekReasoning.actionPlan || ['Monitor closely']
-          };
-          
-          // Cache the result
-          aiReasoningCache = {
-            data: reasoningResult,
-            timestamp: now,
-            symbol: symbol
-          };
-          
-          return reasoningResult;
-        }
-      }
-    } catch (error) {
-      console.error('[DEEPSEEK] Failed to get AI reasoning, using fallback:', error.message);
-    }
-  }
-  
-  // Fallback to local reasoning
-  console.log('[AI] Using local reasoning (DeepSeek not enabled or failed)');
-  return generateLocalReasoning(signals, totalScore, recommendation, marketData, bullish, neutral, bearish);
-}
-
-/**
- * Generate signal analysis from real market data
- */
-async function generateSignals(activeSymbol = 'BTCUSDT') {
-  // Make function async to support DeepSeek API calls
-  try {
-    const marketData = await getMarketData();
-    const lifecycleData = loadLifecycleData();
-    const bundles = lifecycleData.bundles || [];
-    
-    const signals = [];
-    
-    const btc = marketData?.btc || getMockData('BTCUSDT');
-    const eth = marketData?.eth || getMockData('ETHUSDT');
-    const sol = marketData?.sol || getMockData('SOLUSDT');
-    const xrp = marketData?.xrp || getMockData('XRPUSDT');
-    
-    const activeCrypto = activeSymbol || 'BTCUSDT';
-    const cryptoData = {
-      'BTCUSDT': btc,
-      'ETHUSDT': eth,
-      'SOLUSDT': sol,
-      'XRPUSDT': xrp
-    }[activeCrypto] || btc;
-    
-    if (cryptoData) {
-      const cryptoChange = parseFloat(cryptoData.change24h) || 0;
-      const cryptoChangePercent = cryptoChange * 100;
-      const cryptoPrice = parseFloat(cryptoData.lastPr) || 0;
-      const cryptoVolume = parseFloat(cryptoData.usdt24h) || 0;
-      const cryptoHigh = parseFloat(cryptoData.high24h) || 0;
-      const cryptoLow = parseFloat(cryptoData.low24h) || 0;
-      
-      const cryptoName = activeCrypto.replace('USDT', '');
-      
-      // 1. Momentum Signal (12% weight)
-      const momentumScore = cryptoChangePercent > 5 ? 80 : cryptoChangePercent > 2 ? 65 : cryptoChangePercent > 0 ? 55 : cryptoChangePercent > -2 ? 45 : cryptoChangePercent > -5 ? 35 : 20;
-      signals.push({
-        name: 'Momentum',
-        score: momentumScore,
-        weight: 0.12,
-        rationale: `${cryptoName} 24h change: ${cryptoChangePercent.toFixed(2)}%, price: $${cryptoPrice.toLocaleString()}`,
-        timestamp: Date.now()
-      });
-      
-      // 2. Volatility Signal (10% weight)
-      const volatility = cryptoLow > 0 ? ((cryptoHigh - cryptoLow) / cryptoLow) * 100 : 0;
-      const volatilityScore = volatility > 3 && volatility < 10 ? 75 : volatility >= 10 && volatility < 15 ? 60 : volatility < 3 ? 40 : 30;
-      signals.push({
-        name: 'Volatility',
-        score: volatilityScore,
-        weight: 0.10,
-        rationale: `${cryptoName} 24h volatility: ${volatility.toFixed(2)}% (H: $${cryptoHigh.toLocaleString()}, L: $${cryptoLow.toLocaleString()})`,
-        timestamp: Date.now()
-      });
-      
-      // 3. Trend Signal (12% weight)
-      const trendScore = cryptoChangePercent > 3 ? 80 : cryptoChangePercent > 0 ? 60 : cryptoChangePercent > -3 ? 40 : 20;
-      signals.push({
-        name: 'Trend',
-        score: trendScore,
-        weight: 0.12,
-        rationale: `${cryptoName} short-term trend: ${cryptoChangePercent > 0 ? 'BULLISH' : 'BEARISH'} (${cryptoChangePercent.toFixed(2)}%)`,
-        timestamp: Date.now()
-      });
-      
-      // 4. Volume Analysis Signal (10% weight)
-      const volumeScore = cryptoVolume > 1_000_000_000 ? 85 : cryptoVolume > 100_000_000 ? 70 : cryptoVolume > 10_000_000 ? 55 : 35;
-      signals.push({
-        name: 'Volume',
-        score: volumeScore,
-        weight: 0.10,
-        rationale: `${cryptoName} 24h volume: $${(cryptoVolume / 1_000_000).toFixed(0)}M`,
-        timestamp: Date.now()
-      });
-      
-      // 5. RSI Signal (12% weight)
-      const simulatedRSI = 50 + (cryptoChangePercent * 2);
-      const rsiScore = simulatedRSI < 20 ? 85 : simulatedRSI < 30 ? 70 : simulatedRSI < 45 ? 55 : simulatedRSI < 55 ? 50 : simulatedRSI < 65 ? 45 : simulatedRSI < 75 ? 30 : 15;
-      signals.push({
-        name: 'RSI',
-        score: Math.max(0, Math.min(100, rsiScore)),
-        weight: 0.12,
-        rationale: `${cryptoName} RSI: ${Math.max(0, Math.min(100, simulatedRSI)).toFixed(1)} (Simulated)`,
-        timestamp: Date.now()
-      });
-      
-      // 6. MACD Signal (10% weight)
-      const macdHistogram = cryptoChangePercent * 0.5;
-      const macdScore = macdHistogram > 0 ? 70 : macdHistogram > -1 ? 50 : 30;
-      signals.push({
-        name: 'MACD',
-        score: macdScore,
-        weight: 0.10,
-        rationale: `${cryptoName} MACD Histogram: ${macdHistogram.toFixed(2)} (${macdHistogram > 0 ? 'Bullish' : 'Bearish'})`,
-        timestamp: Date.now()
-      });
-      
-      // 7. Market Regime Signal (10% weight)
-      let regime = 'SIDEWAYS';
-      let regimeScore = 50;
-      if (cryptoChangePercent > 5) { regime = 'BULL'; regimeScore = 85; }
-      else if (cryptoChangePercent > 2) { regime = 'BULL'; regimeScore = 70; }
-      else if (cryptoChangePercent < -5) { regime = 'BEAR'; regimeScore = 15; }
-      else if (cryptoChangePercent < -2) { regime = 'BEAR'; regimeScore = 30; }
-      
-      signals.push({
-        name: 'Market Regime',
-        score: regimeScore,
-        weight: 0.10,
-        rationale: `${cryptoName} market regime: ${regime} (${cryptoChangePercent.toFixed(2)}%)`,
-        timestamp: Date.now(),
-        data: { regime, change24h: cryptoChangePercent }
-      });
-      
-      // 8. Support/Resistance Signal (8% weight)
-      const rangePosition = ((cryptoPrice - cryptoLow) / (cryptoHigh - cryptoLow)) * 100;
-      const srScore = 100 - rangePosition;
-      signals.push({
-        name: 'Support/Resistance',
-        score: Math.max(0, Math.min(100, srScore)),
-        weight: 0.08,
-        rationale: `${cryptoName} price position: ${rangePosition.toFixed(1)}% of 24h range (${rangePosition > 50 ? 'Near Resistance' : 'Near Support'})`,
-        timestamp: Date.now()
-      });
-      
-      // 9. Sentiment Signal (8% weight)
-      const sentimentScore = cryptoChangePercent > 0 ? 60 + Math.min(20, cryptoChangePercent * 2) : 40 - Math.min(20, Math.abs(cryptoChangePercent) * 2);
-      signals.push({
-        name: 'Sentiment',
-        score: Math.max(0, Math.min(100, sentimentScore)),
-        weight: 0.08,
-        rationale: `${cryptoName} market sentiment: ${sentimentScore > 60 ? 'Bullish' : sentimentScore > 40 ? 'Neutral' : 'Bearish'}`,
-        timestamp: Date.now()
-      });
-      
-      // 10. Risk Signal (8% weight)
-      const riskScore = Math.max(0, 100 - volatility * 5);
-      signals.push({
-        name: 'Risk Assessment',
-        score: riskScore,
-        weight: 0.08,
-        rationale: `${cryptoName} risk level: ${riskScore > 70 ? 'LOW' : riskScore > 40 ? 'MEDIUM' : 'HIGH'} (vol: ${volatility.toFixed(2)}%)`,
-        timestamp: Date.now()
-      });
-    }
-    
-    const totalWeight = signals.reduce((sum, s) => sum + s.weight, 0);
-    const weightedScore = signals.length > 0 
-      ? signals.reduce((sum, s) => sum + s.score * s.weight, 0) / totalWeight 
-      : 50;
-    
-    let recommendation = 'HOLD';
-    if (weightedScore >= 80) recommendation = 'STRONG_BUY';
-    else if (weightedScore >= 65) recommendation = 'BUY';
-    else if (weightedScore >= 50) recommendation = 'HOLD';
-    else if (weightedScore >= 35) recommendation = 'SELL';
-    else recommendation = 'STRONG_SELL';
-    
-    const bullish = signals.filter(s => s.score >= 60).length;
-    const neutral = signals.filter(s => s.score >= 40 && s.score < 60).length;
-    const bearish = signals.filter(s => s.score < 40).length;
-    
-    console.log('[DASHBOARD] Generated', signals.length, 'signals:', signals.map(s => s.name));
-    
-    const aiReasoning = await generateAIReasoning(signals, weightedScore, recommendation, { [activeCrypto.toLowerCase().replace('usdt', '')]: cryptoData }, bullish, neutral, bearish, activeCrypto);
-    
-    return {
-      timestamp: Date.now(),
-      symbol: activeCrypto,
-      totalScore: Math.round(weightedScore * 100) / 100,
-      recommendation,
-      confidence: Math.min(1, signals.length / 10),
-      signals,
-      summary: {
-        bullish,
-        neutral,
-        bearish,
-        marketRegime: signals.find(s => s.name === 'Market Regime')?.data?.regime || 'UNKNOWN'
-      },
-      aiReasoning,
-      marketData: {
-        btc,
-        eth,
-        sol,
-        xrp
-      }
-    };
-  } catch (error) {
-    console.error('[DASHBOARD] Error generating signals:', error);
-    console.error('[DASHBOARD] Stack trace:', error.stack);
-    return {
-      timestamp: Date.now(),
-      symbol: 'BTCUSDT',
-      totalScore: 50,
-      recommendation: 'HOLD',
-      confidence: 0.5,
-      signals: [],
-      summary: { bullish: 0, neutral: 0, bearish: 0, marketRegime: 'UNKNOWN' },
-      aiReasoning: { 
-        decision: 'HOLD', 
-        confidence: 50, 
-        summary: `Error: ${error.message}`, 
-        keyPoints: [error.stack], 
-        rationale: 'Server error - check terminal for details' 
-      },
-      marketData: { btc: getMockData('BTCUSDT'), eth: getMockData('ETHUSDT'), sol: getMockData('SOLUSDT'), xrp: getMockData('XRPUSDT') }
-    };
+    const raw = fs.readFileSync(lifecyclePath, 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return { bundles: [] };
   }
 }
 
-/**
- * Generate mock portfolio data
- */
-function generateMockPortfolio() {
-  const positions = [
-    { symbol: 'BTCUSDT', amount: 0.05, entryPrice: 63500, currentPrice: 64174, side: 'long', openedAt: Date.now() - 86400000 },
-    { symbol: 'ETHUSDT', amount: 2.5, entryPrice: 1720, currentPrice: 1734, side: 'long', openedAt: Date.now() - 43200000 },
-    { symbol: 'SOLUSDT', amount: 50, entryPrice: 142, currentPrice: 138, side: 'long', openedAt: Date.now() - 21600000 }
-  ];
-  
-  const positionsWithPnL = positions.map(pos => {
-    const pnl = pos.side === 'long' ? (pos.currentPrice - pos.entryPrice) * pos.amount : (pos.entryPrice - pos.currentPrice) * pos.amount;
-    const pnlPercent = ((pos.currentPrice - pos.entryPrice) / pos.entryPrice) * 100;
-    return { ...pos, pnl, pnlPercent };
-  });
-  
-  const totalValue = positions.reduce((sum, pos) => sum + pos.currentPrice * pos.amount, 0);
-  const unrealizedPnL = positionsWithPnL.reduce((sum, pos) => sum + pos.pnl, 0);
-  const realizedPnL = 1250;
-  
-  return {
-    totalValue,
-    totalPnL: unrealizedPnL + realizedPnL,
-    totalPnLPercent: (unrealizedPnL + realizedPnL) / (totalValue - realizedPnL) * 100,
-    realizedPnL,
-    unrealizedPnL,
-    positions: positionsWithPnL,
-    allocation: positions.map(pos => ({ symbol: pos.symbol, percentage: (pos.currentPrice * pos.amount / totalValue) * 100 })),
-    winRate: 64,
-    totalTrades: 25,
-    winningTrades: 16,
-    losingTrades: 9,
-    avgWin: 185.50,
-    avgLoss: 95.20,
-    profitFactor: 1.95,
-    sharpeRatio: 1.42,
-    maxDrawdown: 450
-  };
+function sendJson(res, status, payload) {
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(payload));
 }
 
-/**
- * Generate mock backtest data
- */
-function generateMockBacktest() {
-  const trades = Array.from({ length: 15 }, (_, i) => {
-    const pnl = (Math.random() - 0.4) * 300;
-    return {
-      entryPrice: 63000 + Math.random() * 2000,
-      exitPrice: 63000 + Math.random() * 2000,
-      entryTime: Date.now() - (15 - i) * 86400000,
-      exitTime: Date.now() - (14 - i) * 86400000,
-      side: Math.random() > 0.5 ? 'long' : 'short',
-      amount: 0.01 + Math.random() * 0.04,
-      pnl,
-      pnlPercent: (pnl / 64000) * 100,
-      fees: 2.5,
-      exitReason: ['take-profit', 'stop-loss', 'signal-reverse'][Math.floor(Math.random() * 3)]
-    };
-  });
-  
-  const equityCurve = trades.map((t, i) => ({
-    timestamp: t.exitTime,
-    value: 10000 + trades.slice(0, i + 1).reduce((sum, trade) => sum + trade.pnl, 0)
-  }));
-  
-  const winningTrades = trades.filter(t => t.pnl > 0);
-  const losingTrades = trades.filter(t => t.pnl <= 0);
-  
-  return {
-    totalReturn: trades.reduce((sum, t) => sum + t.pnl, 0),
-    totalReturnPercent: (trades.reduce((sum, t) => sum + t.pnl, 0) / 10000) * 100,
-    totalTrades: trades.length,
-    winningTrades: winningTrades.length,
-    losingTrades: losingTrades.length,
-    winRate: (winningTrades.length / trades.length) * 100,
-    avgWin: winningTrades.length > 0 ? winningTrades.reduce((sum, t) => sum + t.pnl, 0) / winningTrades.length : 0,
-    avgLoss: losingTrades.length > 0 ? Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0) / losingTrades.length) : 0,
-    profitFactor: 1.85,
-    sharpeRatio: 1.35,
-    maxDrawdown: 520,
-    maxDrawdownPercent: 5.2,
-    avgTradeDuration: 28.5,
-    bestTrade: Math.max(...trades.map(t => t.pnl)),
-    worstTrade: Math.min(...trades.map(t => t.pnl)),
-    consecutiveWins: 5,
-    consecutiveLosses: 3,
-    trades,
-    equityCurve
-  };
-}
-
-// Create HTTP server
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
-  
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
     res.end();
     return;
   }
-  
+
   if (url.pathname === '/api/market-data') {
     try {
-      const marketData = await getMarketData();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(marketData));
+      const snap = await provider.getSnapshot(SYMBOLS);
+      sendJson(res, 200, {
+        btc: snap.tickers.BTCUSDT,
+        eth: snap.tickers.ETHUSDT,
+        sol: snap.tickers.SOLUSDT,
+        xrp: snap.tickers.XRPUSDT,
+        source: snap.source,
+        isLive: snap.isLive,
+        errors: snap.errors,
+        fetchedAt: snap.fetchedAt,
+      });
     } catch (error) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: error.message }));
+      // No live data. Say so plainly; never substitute fake prices.
+      sendJson(res, 503, {
+        error: 'Live market data unavailable',
+        detail: error.message,
+        isLive: false,
+      });
     }
     return;
   }
-  
+
   if (url.pathname === '/api/signals') {
     try {
       const symbol = url.searchParams.get('symbol') || 'BTCUSDT';
-      const signals = await generateSignals(symbol);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(signals));
+      sendJson(res, 200, await generateSignals(symbol));
     } catch (error) {
       console.error('[DASHBOARD] Signals API error:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: error.message, stack: error.stack }));
+      sendJson(res, 503, { error: error.message, isLive: false });
     }
     return;
   }
-  
+
+  if (url.pathname === '/api/indicators') {
+    try {
+      const symbol = url.searchParams.get('symbol') || 'BTCUSDT';
+      const interval = url.searchParams.get('interval') || '1d';
+      sendJson(res, 200, await buildIndicators(symbol, interval, 200));
+    } catch (error) {
+      sendJson(res, 503, { error: error.message, isLive: false });
+    }
+    return;
+  }
+
   if (url.pathname === '/api/lifecycle') {
     try {
-      const lifecycleData = loadLifecycleData();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(lifecycleData));
+      sendJson(res, 200, loadLifecycleData());
     } catch (error) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: error.message }));
+      sendJson(res, 500, { error: error.message });
     }
     return;
   }
-  
+
   if (url.pathname === '/api/portfolio') {
     try {
-      const portfolioData = generateMockPortfolio();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(portfolioData));
+      sendJson(res, 200, await buildPortfolio());
     } catch (error) {
       console.error('[DASHBOARD] Portfolio API error:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: error.message }));
+      sendJson(res, 503, { error: error.message, isLive: false });
     }
     return;
   }
-  
+
   if (url.pathname === '/api/backtest') {
     try {
-      const backtestData = generateMockBacktest();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(backtestData));
+      const symbol = url.searchParams.get('symbol') || 'BTCUSDT';
+      const interval = url.searchParams.get('interval') || '1d';
+      sendJson(res, 200, await buildBacktest(symbol, interval, 200));
     } catch (error) {
       console.error('[DASHBOARD] Backtest API error:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: error.message }));
+      sendJson(res, 503, { error: error.message, isLive: false });
     }
     return;
   }
-  
+
+  // Static dashboard files.
   let filePath = path.join(__dirname, '..', 'dashboard', url.pathname === '/' ? 'index.html' : url.pathname);
-  
   const dashboardDir = path.join(__dirname, '..', 'dashboard');
+
   if (!filePath.startsWith(dashboardDir)) {
     res.writeHead(403);
     res.end('Forbidden');
     return;
   }
-  
+
   const ext = path.extname(filePath).toLowerCase();
   const contentTypes = {
     '.html': 'text/html',
@@ -706,14 +599,12 @@ const server = http.createServer(async (req, res) => {
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.gif': 'image/gif',
-    '.svg': 'image/svg+xml'
+    '.svg': 'image/svg+xml',
   };
-  
-  const contentType = contentTypes[ext] || 'application/octet-stream';
-  
+
   try {
     const content = fs.readFileSync(filePath);
-    res.writeHead(200, { 'Content-Type': contentType });
+    res.writeHead(200, { 'Content-Type': contentTypes[ext] || 'application/octet-stream' });
     res.end(content);
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -731,13 +622,15 @@ server.listen(PORT, () => {
   console.log('  AGENTFLOW INFRA - DASHBOARD SERVER');
   console.log('===========================================');
   console.log(`  Dashboard:  http://localhost:${PORT}`);
-  console.log(`  API:        http://localhost:${PORT}/api/signals`);
+  console.log(`  Signals:    http://localhost:${PORT}/api/signals`);
   console.log(`  Market:     http://localhost:${PORT}/api/market-data`);
-  console.log(`  Lifecycle:  http://localhost:${PORT}/api/lifecycle`);
+  console.log(`  Indicators: http://localhost:${PORT}/api/indicators`);
+  console.log(`  Portfolio:  http://localhost:${PORT}/api/portfolio`);
+  console.log(`  Backtest:   http://localhost:${PORT}/api/backtest`);
   console.log('===========================================');
-  console.log('  Real-time data from Bitget');
-  console.log('  10-signal engine (inspired by DCA Claw)');
-  console.log('  Auto-refresh every 5 seconds');
+  console.log('  Live data: CoinGecko -> Binance failover');
+  console.log('  Real RSI/MACD computed from Binance klines');
+  console.log('  No simulated fallback - errors surface instead');
   console.log('===========================================');
 });
 

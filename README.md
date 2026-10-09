@@ -45,10 +45,14 @@ npm run dashboard
 ## 📊 Dashboard Features
 
 ### **Real-Time Market Data**
-- ✅ **Bitget V2 API Integration** - Live prices, no API key needed
+- ✅ **Multi-Source Live Prices** - CoinGecko → Binance → Bitget failover
 - ✅ **Multi-Crypto Support** - BTC, ETH, SOL, XRP
 - ✅ **Auto-Refresh** - Updates every 5 seconds
 - ✅ **Price Display** - 24h change, high, low, volume
+- ✅ **Live/Down Badge** - the UI states which source is serving prices
+
+> **No simulated fallback.** If every live source fails, the API returns an error
+> and the badge turns red. It never shows invented prices.
 
 ### **10 Technical Signals** (Inspired by [DCA Claw](https://github.com/Argeneau12e/DCA_claw))
 **Credit: Samuel Oduntan (@Argeneau12e, @Little_Sam_1428)**
@@ -59,12 +63,16 @@ npm run dashboard
 | **Volatility** | 10% | Price volatility analysis |
 | **Trend** | 12% | Short-term trend direction |
 | **Volume** | 10% | Trading volume analysis |
-| **RSI** | 12% | Overbought/Oversold indicator |
-| **MACD** | 10% | Momentum convergence/divergence |
+| **RSI** | 12% | RSI(14) computed from real Binance 1h candles |
+| **MACD** | 10% | Real MACD line / signal / histogram from candles |
 | **Market Regime** | 10% | BULL/BEAR/SIDEWAYS detection |
 | **Support/Resistance** | 8% | Price position in 24h range |
-| **Sentiment** | 8% | Market sentiment analysis |
+| **Sentiment** | 8% | ⚠️ No live source configured - reports neutral, labelled `unavailable` |
 | **Risk Assessment** | 8% | Overall risk level |
+
+> Signals that cannot be computed from real data report a neutral score with
+> `source: "unavailable"`. Nothing is derived from price and passed off as a
+> different indicator.
 
 ### **AI Reasoning Panel**
 - 🤖 **DeepSeek AI Integration** - Professional trading analysis
@@ -74,17 +82,19 @@ npm run dashboard
 - 💾 **Smart Caching** - Updates every 5 minutes (saves 95% on API costs!)
 
 ### **Portfolio Tracking**
-- 💰 **Total Value** - Portfolio worth
-- 📊 **PnL** - Realized + Unrealized
-- 🎯 **Win Rate** - Success rate
+- 💰 **Total Value** - Cash + positions marked to live prices
+- 📊 **PnL** - Realized (from closed trades) + Unrealized (live)
+- 🎯 **Win Rate** - From persisted trade history (0% when there is none)
 - 📈 **Allocation** - Asset distribution
-- 📉 **Equity Curve** - Performance over time
+- 💾 **Persisted** - `portfolio_state.json`, validated on load
+- ⚠️ Reports unpriced symbols as errors instead of guessing a price
 
 ### **Backtesting View**
-- 🔬 **Strategy Testing** - Historical performance
+- 🔬 **Real Candles** - 200 historical Binance candles by default
 - 📊 **Metrics** - Sharpe ratio, max drawdown, profit factor
-- 📈 **Equity Curve** - Growth chart
-- 📋 **Trade History** - Individual trade analysis
+- 📈 **Equity Curve** - Marked on every real candle
+- 📋 **Trade History** - Entry/exit, fees, and exit reason
+- 🧾 **Provenance** - Response carries `symbol`, `interval`, `candleCount`, `source`
 
 ---
 
@@ -143,10 +153,11 @@ DEEPSEEK_CACHE_TTL=300000
 ### Without API Keys
 
 The dashboard **works perfectly without any API keys**:
-- ✅ Market data from Bitget public API (free, no auth)
+- ✅ Live market data from CoinGecko/Binance public APIs (free, no auth)
 - ✅ All 10 technical signals
-- ✅ Portfolio tracking (mock data)
-- ✅ Backtesting (mock data)
+- ✅ Real RSI/MACD computed from Binance candles
+- ✅ Portfolio tracking (persisted in `portfolio_state.json`, marked to live prices)
+- ✅ Backtesting over real historical candles
 - ⚠️ AI reasoning uses local fallback (still functional!)
 
 ---
