@@ -142,20 +142,7 @@ Targets, explicitly **TARGETED** not observed:
 
 ---
 
-## Part 5 · Deliverables
-
-Everything below is in the **Submission Materials Link** field. The repo is public at commit `f89b15a`.
-
-| Material | Link | What it proves |
-|---|---|---|
-| Full source | https://github.com/Cloud99p/agentflow-infra/tree/f89b15a | The complete tool, runnable |
-| Dashboard (Demo) | `npm run dashboard` → `http://localhost:3000` | Live signals, indicators, portfolio, backtest |
-| Signal cross-check evidence | `evidence/dashboard-crosscheck.json` | Both cross-checks live, with the unavailable-source list |
-| Skill Hub availability probe | `evidence/skill-hub-probe.json` | The 27-tool measurement (12 live / 15 dead) with per-tool behaviour |
-| Signal engine | `src/signals/skill-hub-signals.ts` | The cross-verification implementation |
-| Skill Hub client | `src/skill-hub-client.ts` | The MCP integration |
-
-### Complete research task (required demo: question → actionable insight)
+### Required research task (question → actionable insight)
 
 This track requires one complete research task, full flow from question to actionable insight. Here is one end to end, reproduced from the live system.
 
@@ -191,7 +178,9 @@ Three distinct roles, none of them decorative:
 
 ---
 
-## Part 6 · My take on AI Trading (optional)
+## Part 5 · Your take on AI Trading (optional)
+
+> Note for the submission: Part 1 carries the required "complete research task" walkthrough. The deliverables list goes in the separate **Submission Material Links** field, not here.
 
 Using the Bitget Skill Hub shaped my thinking more than any single result. Two observations.
 
