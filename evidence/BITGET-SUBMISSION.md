@@ -1,8 +1,9 @@
 # Bitget AI Trading Competition — Project Description
 
-**Entry type:** Tool / Infrastructure — **AI Trading Desk track** (research tools and dashboards)
+**Entry type:** Tool / Infrastructure — **AI Trading Desk track** (AI Research Workbench)
+**Sub-theme:** Information Extraction & Signal Generation
 **Repo:** https://github.com/Cloud99p/agentflow-infra
-**Commit submitted:** `6002896`
+**Commit submitted:** `f89b15a`
 **Data labels used throughout:** OBSERVED (measured on this build) · ESTIMATED (inferred from observed) · TARGETED (goal, not yet achieved)
 
 ---
@@ -106,7 +107,6 @@ Targets, explicitly **TARGETED** not observed:
 ---
 
 ## Part 4 · Progress
-
 **Built and working.**
 - TypeScript trading infrastructure, ESM, Node ≥20. 27/27 modules load clean.
 - Live market data with failover: CoinGecko → Binance, no mock fallback anywhere — a dead source surfaces as an error, never an invented number.
@@ -142,7 +142,56 @@ Targets, explicitly **TARGETED** not observed:
 
 ---
 
-## Part 5 · My take on AI Trading
+## Part 5 · Deliverables
+
+Everything below is in the **Submission Materials Link** field. The repo is public at commit `f89b15a`.
+
+| Material | Link | What it proves |
+|---|---|---|
+| Full source | https://github.com/Cloud99p/agentflow-infra/tree/f89b15a | The complete tool, runnable |
+| Dashboard (Demo) | `npm run dashboard` → `http://localhost:3000` | Live signals, indicators, portfolio, backtest |
+| Signal cross-check evidence | `evidence/dashboard-crosscheck.json` | Both cross-checks live, with the unavailable-source list |
+| Skill Hub availability probe | `evidence/skill-hub-probe.json` | The 27-tool measurement (12 live / 15 dead) with per-tool behaviour |
+| Signal engine | `src/signals/skill-hub-signals.ts` | The cross-verification implementation |
+| Skill Hub client | `src/skill-hub-client.ts` | The MCP integration |
+
+### Complete research task (required demo: question → actionable insight)
+
+This track requires one complete research task, full flow from question to actionable insight. Here is one end to end, reproduced from the live system.
+
+**Question asked:** *"Is my BTC signal reading trustworthy today — and specifically, is my RSI actually correct?"*
+
+This is the question the tool exists to answer, and it is asked in natural language against the dashboard.
+
+**Step 1 — the system produces its reading.** `GET /api/signals?symbol=BTCUSDT` returns a composite of **55.03 → HOLD** from 12 signals.
+
+**Step 2 — the provenance layer answers the trust half immediately.** The response carries `liveSourceCount: 11` and `unavailableSources: ["Sentiment"]`. So before any analysis, the trader knows: 11 inputs are real, and **one is not**. Critically, the Sentiment signal carries `source: "unavailable"` and a rationale reading *"source not configured - neutral score, no fabricated reading"* — the neutral 50 is in the composite but **labelled as not real**.
+
+**Step 3 — the cross-checks answer the correctness half.** Two signals exist to interrogate the others:
+- **Exchange Cross-Check** (`source: skill-hub:crypto_derivatives`): *"CCXT reports 82657.30 vs 82570.00 primary (+0.106%)"* → **50.53**
+- **Indicator Cross-Check** (`source: skill-hub:technical_analysis`): *"Independent RSI(14) = 50.47 (neutral), timeframe 1d | local RSI 51.86 (delta 1.39)"* → **50.47**
+
+**Step 4 — the insight.** The trader now has something the raw composite never gave them: **the specific answer to their question is yes.** The RSI is correct — an independent implementation on the Skill Hub reports 50.47 against the locally computed 51.86, a delta of 1.39, well inside tolerance for different timeframes and vendors. The price agrees to 0.106%. So the trader can act on the RSI reading *knowing it is verified*, rather than taking it on faith.
+
+**Step 5 — the caveat travels with the decision.** The action is **HOLD**, and the trader knows precisely why the system is not more confident: sentiment is missing. That is a materially different position from a system that reports HOLD with a fabricated neutral sentiment score and no indication anything was substituted. The trader's decision is auditable: *BTC is neutral at 55.03, verified across three independent sources, with a known gap in the sentiment input.*
+
+**Why this is the whole thesis in one task.** The system did not just produce a number. It produced a number **and an account of what that number rests on** — and it declined to invent the input it did not have. For a desk tool, that is the deliverable.
+
+---
+
+## Role of the LLM in Your Project
+
+Three distinct roles, none of them decorative:
+
+1. **Signal reasoning.** Given the twelve computed signals, the model produces the narrative decision and a confidence level — it explains and contextualises the deterministic composite rather than replacing it. The composite is arithmetic anyone can re-derive; the LLM is the layer that makes it legible.
+2. **Development.** The model wrote the TypeScript implementation, the MCP client for the Skill Hub, and the probe that mapped which of the 27 tools work. Every bug in Part 4 was diagnosed and fixed in a model-assisted loop.
+3. **Investigation.** The tool-availability probe (12 live / 15 dead, with per-tool failure behaviour) was built by having the model probe each upstream and record the actual result rather than trusting a manifest.
+
+**Model used:** the agent layer runs on DeepSeek (configurable). **Qwen credits:** not used — no Qwen Token application was made for this entry, so per the form's instruction that section is omitted.
+
+---
+
+## Part 6 · My take on AI Trading (optional)
 
 Using the Bitget Skill Hub shaped my thinking more than any single result. Two observations.
 
