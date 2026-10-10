@@ -1,8 +1,8 @@
 # Bitget AI Trading Competition — Project Description
 
-**Entry type:** Tool / Infrastructure (agent-facing trading tooling)
+**Entry type:** Tool / Infrastructure — **AI Trading Desk track** (research tools and dashboards)
 **Repo:** https://github.com/Cloud99p/agentflow-infra
-**Commit submitted:** `0a0407e`
+**Commit submitted:** `6002896`
 **Data labels used throughout:** OBSERVED (measured on this build) · ESTIMATED (inferred from observed) · TARGETED (goal, not yet achieved)
 
 ---
@@ -12,6 +12,8 @@
 **Why I built this.** AI trading agents inherit a problem that human desks solved decades ago and that most agent frameworks have quietly reintroduced: every number the model reasons over comes from a source the model cannot audit, and most frameworks paper over a failed data source with a neutral default. A sentiment fetch times out and the agent silently scores it 50. An indicator call dies and the score drifts toward "no opinion" — which, in a weighted composite, is indistinguishable from a genuine neutral reading. The agent then trades on a number that means nothing, and nothing in the system says so.
 
 The core hypothesis is narrow and testable: **an agent that refuses to fabricate unavailable inputs, and that verifies its own primitives against an independent implementation, produces more trustworthy decisions than one that fills gaps with neutral defaults — and this is measurable rather than philosophical.**
+
+I built this as a **trading desk** rather than a strategy, deliberately. A desk's job is not to promise a return; it is to hand a trader numbers they can defend, and to tell them what they do not know. That framing is why the deliverable is a research surface with auditable provenance, and why the validation in Part 3 measures the integrity of the data layer rather than a hypothetical P&L.
 
 **Signal sources.** Twelve signals feed a weighted composite. Ten are computed from live market data:
 
