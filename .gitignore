@@ -61,3 +61,7 @@ temp/
 # Runtime server logs
 dashboard-run.err
 dashboard-run.log
+
+# Submission draft is workspace-only, never published to the public repo
+evidence/BITGET-SUBMISSION.md
+
